@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Kontar — regras do módulo de inventário.
+    // Usuário "real" = autenticado por e-mail/senha (não anônimo).
+    function logado() {
+      return request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    // Usuários do app. Os docs são indexados por um id interno (usuarios/{id},
+    // gerado pelo app), NÃO pelo uid do Firebase Auth — por isso não dá pra
+    // checar "é admin" nas regras sem um índice auxiliar. Qualquer usuário
+    // logado lê (o app lista coletores para atribuição e carrega o perfil no
+    // login) e escreve (o admin cria/edita usuários; o próprio usuário grava
+    // _fbNewPass). Endurecimento sugerido (ver README): custom claims de
+    // admin via Cloud Function, ou passar a usar o uid do Auth como id do doc.
+    match /usuarios/{userId} {
+      allow read, write: if logado();
+    }
+
+    // Configuração do cliente (tenant): nome, módulos ativos.
+    // Leitura só por get (nunca list) e escrita manual pelo Console.
+    match /clientes/{clienteId} {
+      allow get: if logado();
+    }
+
+    // Coleções do inventário: qualquer usuário logado lê e escreve
+    // (coletores gravam bipagens; admin gerencia inventários/catálogo/auditoria).
+    match /inv_inventarios/{invId} {
+      allow read, write: if logado();
+    }
+    match /inv_bipagens/{bipId} {
+      allow read, write: if logado();
+    }
+    match /inv_catalogo/{docId} {
+      allow read, write: if logado();
+    }
+    match /inv_catalogo_blocos/{docId} {
+      allow read, write: if logado();
+    }
+    match /inv_auditlog/{docId} {
+      allow read, write: if logado();
+    }
+  }
+}

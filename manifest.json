@@ -1,0 +1,25 @@
+{
+  "name": "Kontar — Inventário",
+  "short_name": "Kontar",
+  "description": "Inventário para mercados e farmácias",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1B1B1F",
+  "theme_color": "#1B1B1F",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

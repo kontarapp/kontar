@@ -1,0 +1,14 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "inv_bipagens",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "invId", "order": "ASCENDING" },
+        { "fieldPath": "endereco", "order": "ASCENDING" },
+        { "fieldPath": "ts", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

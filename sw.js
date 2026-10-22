@@ -1,0 +1,142 @@
+// Kontar — Service Worker
+// Atualize CACHE_NAME e os ?v= sempre que publicar novos arquivos
+var CACHE_NAME = 'kontar-v1';
+
+// Arquivos críticos: sempre buscados da rede (nunca do cache)
+var NETWORK_FIRST = ['app.js', 'index.html', 'firebase-config.js'];
+
+var SHELL_ASSETS = [
+  './',
+  './index.html',
+  './app.js?v=1',
+  './style.css?v=1',
+  './firebase-config.js',
+  './lib/inv-bip-core.js?v=1',
+  './logo.png',
+  './logo-light.png',
+  './icon-192.png',
+  './icon-512.png',
+  './manifest.json'
+];
+
+// Responde ao postMessage SKIP_WAITING enviado pelo app
+self.addEventListener('message', function(event) {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+// Instala e faz cache dos arquivos do app
+self.addEventListener('install', function(event) {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(function(cache) {
+      return cache.addAll(SHELL_ASSETS);
+    }).then(function() {
+      return self.skipWaiting();
+    })
+  );
+});
+
+// Ativa e remove caches antigos
+self.addEventListener('activate', function(event) {
+  event.waitUntil(
+    caches.keys().then(function(keys) {
+      return Promise.all(
+        keys.filter(function(key) { return key !== CACHE_NAME; })
+          .map(function(key) { return caches.delete(key); })
+      );
+    }).then(function() {
+      return self.clients.claim();
+    })
+  );
+});
+
+// Intercepta requisições
+self.addEventListener('fetch', function(event) {
+  var url = event.request.url;
+
+  // Firebase: não intercepta
+  if (url.includes('googleapis.com') || url.includes('firestore.googleapis.com') || url.includes('firebaseio.com')) {
+    return;
+  }
+
+  // CDN externos: network-first, cai no cache se offline
+  if (url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com') || url.includes('cdn.jsdelivr.net') || url.includes('cdnjs.cloudflare.com')) {
+    event.respondWith(
+      fetch(event.request).then(function(resp) {
+        if (resp.ok) {
+          var clone = resp.clone();
+          caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, clone); });
+        }
+        return resp;
+      }).catch(function() {
+        return caches.match(event.request);
+      })
+    );
+    return;
+  }
+
+  // app.js e index.html: SEMPRE network-first
+  // urlPath termina em '/' quando é a URL "raiz" (ex: kontar/) — o navegador
+  // resolve isso pra index.html, mas o endsWith('index.html') abaixo nao bate,
+  // entao sem esse OR a navegacao principal caia no cache-first la embaixo.
+  var urlPath = url.split('?')[0];
+  var isNetworkFirst = urlPath.endsWith('/') || NETWORK_FIRST.some(function(f) { return urlPath.endsWith(f); });
+  if (isNetworkFirst) {
+    // cache:'no-cache' forca o navegador a SEMPRE revalidar com o servidor
+    // (ignora o Cache-Control: max-age=600 do GitHub Pages), mas por meio de
+    // uma requisicao condicional (If-None-Match/If-Modified-Since) — se o
+    // arquivo nao mudou, o servidor responde 304 e o navegador reusa o corpo
+    // ja baixado, sem re-transferir os ~930KB do app.js de novo. Resolve o
+    // mesmo problema que 'reload' resolvia (publicar 2+ builds em menos de
+    // 10min sem ficar preso ao cache HTTP local), mas sem forcar download
+    // completo em toda carga — 'reload' ignorava a validacao e sempre baixava
+    // o arquivo inteiro de novo, deixando o login lento no 4G/wifi da loja
+    // mesmo quando nada tinha mudado desde a ultima visita (achado 19/09/26).
+    // Safari rejeita fetch(request, init) quando request.mode === 'navigate' (TypeError) — no iPhone
+    // isso caia no catch e, sem cache ainda, a pagina abria em branco. Pra navegacao monta a
+    // requisicao pela URL; e se ainda assim falhar e nao houver cache, tenta o fetch puro.
+    var req = event.request.mode === 'navigate'
+      ? new Request(event.request.url, {cache: 'no-cache', credentials: 'same-origin'})
+      : new Request(event.request, {cache: 'no-cache'});
+    event.respondWith(
+      fetch(req).then(function(resp) {
+        if (resp && resp.ok) {
+          var clone = resp.clone();
+          caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, clone); });
+        }
+        return resp;
+      }).catch(function() {
+        return caches.match(event.request).then(function(cached) {
+          return cached || fetch(event.request);
+        });
+      })
+    );
+    return;
+  }
+
+  // Demais arquivos locais: cache-first (imagens, css, etc.)
+  event.respondWith(
+    caches.match(event.request).then(function(cached) {
+      if (cached) {
+        fetch(event.request).then(function(resp) {
+          if (resp && resp.ok) {
+            caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, resp); });
+          }
+        }).catch(function() {});
+        return cached;
+      }
+      return fetch(event.request).then(function(resp) {
+        if (resp && resp.ok && event.request.method === 'GET') {
+          var clone = resp.clone();
+          caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, clone); });
+        }
+        return resp;
+      }).catch(function() {
+        if (event.request.destination === 'document') {
+          return caches.match('./index.html');
+        }
+      });
+    })
+  );
+});
