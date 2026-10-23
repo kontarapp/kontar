@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '1';
+var BUILD = '2';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -225,6 +225,11 @@ function getLocalDate() {
     + String(d.getDate()).padStart(2, '0');
 }
 function genId() { return 'id_'+Date.now()+'_'+Math.random().toString(36).substr(2,5); }
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 // ===========================================
 // SEGURANÇA — Hash de senhas (SHA-256)
 // ===========================================
@@ -992,11 +997,11 @@ function renderUsers() {
       : '<button class="btn btn-s btn-sm" onclick="editarUser(\''+u.id+'\')">Editar</button>'
         +'<button class="btn btn-s btn-sm" onclick="toggleAtivo(\''+u.id+'\')" style="'+(u.ativo?'color:var(--am)':'color:var(--g)')+'">'+(u.ativo?'Inativar':'Ativar')+'</button>'
         +'<button class="btn btn-d btn-sm" onclick="excluirUser(\''+u.id+'\')">Excluir</button>';
-    return '<tr><td><strong>'+u.nome+'</strong></td><td>'+u.email+'</td>'
-      +'<td><span class="st '+(UPCLS[u.perfil]||'st-ok')+'">'+(UPLABEL[u.perfil]||u.perfil)+'</span></td>'
-      +'<td>'+(u.loja||'-')+'</td>'
-      +'<td>'+(u.setor||'-')+'</td>'
-      +'<td style="font-size:12px;color:var(--t3)">'+(u.cargo||'-')+'</td>'
+    return '<tr><td><strong>'+esc(u.nome)+'</strong></td><td>'+esc(u.email)+'</td>'
+      +'<td><span class="st '+(UPCLS[u.perfil]||'st-ok')+'">'+esc(UPLABEL[u.perfil]||u.perfil)+'</span></td>'
+      +'<td>'+esc(u.loja||'-')+'</td>'
+      +'<td>'+esc(u.setor||'-')+'</td>'
+      +'<td style="font-size:12px;color:var(--t3)">'+esc(u.cargo||'-')+'</td>'
       +'<td><span class="st '+(u.ativo?'st-ok':'st-warn')+'">'+(u.ativo?'Ativo':'Inativo')+'</span></td>'
       +'<td style="display:flex;gap:4px;flex-wrap:wrap">'+actions+'</td></tr>';
   }).join('');
@@ -1092,7 +1097,7 @@ function _renderResultadoBalanco() {
   var val=function(v){ return '<div style="font-size:13px;font-weight:700;margin-top:2px;white-space:nowrap">'+_fmtBRL(v)+'</div>'; };
   var rows=linhas.slice(0,lim).map(function(l){
     var cor=l.dif>0?'#1a5c34':l.dif<0?'#c0392b':'var(--t3)';
-    return '<tr'+(l.nc?' style="background:#fff8f4"':'')+'><td style="font-family:monospace;font-size:12px">'+(l.codigo||'—')+'</td><td style="font-family:monospace;font-size:11px">'+(l.ean||'')+'</td><td style="font-size:12px">'+l.desc+(l.nc?' <b style="color:#e65100;font-size:10px">NC</b>':'')+(l.bips>1?' <span title="Produto bipado '+l.bips+' vezes'+(l.ends>1?' em '+l.ends+' endereços':'')+'" style="display:inline-block;padding:1px 7px;border-radius:9px;font-size:10px;font-weight:700;background:#fff8e1;color:#b38600;margin-left:4px;vertical-align:middle">×'+l.bips+' bip'+(l.ends>1?' · '+l.ends+' end.':'')+'</span>':'')+'</td>'+
+    return '<tr'+(l.nc?' style="background:#fff8f4"':'')+'><td style="font-family:monospace;font-size:12px">'+esc(l.codigo||'—')+'</td><td style="font-family:monospace;font-size:11px">'+esc(l.ean||'')+'</td><td style="font-size:12px">'+esc(l.desc)+(l.nc?' <b style="color:#e65100;font-size:10px">NC</b>':'')+(l.bips>1?' <span title="Produto bipado '+l.bips+' vezes'+(l.ends>1?' em '+l.ends+' endereços':'')+'" style="display:inline-block;padding:1px 7px;border-radius:9px;font-size:10px;font-weight:700;background:#fff8e1;color:#b38600;margin-left:4px;vertical-align:middle">×'+l.bips+' bip'+(l.ends>1?' · '+l.ends+' end.':'')+'</span>':'')+'</td>'+
       '<td style="text-align:right;white-space:nowrap">'+(l.sistema==null?'—':l.sistema)+'</td><td style="text-align:right;font-weight:700;white-space:nowrap">'+l.contado+(l.contadoTotal!=null&&l.contadoTotal!==l.contado?'<div style="font-size:10px;font-weight:600;color:var(--t3)">de '+l.contadoTotal+' no total</div>':'')+'</td><td style="text-align:right;font-weight:800;white-space:nowrap;color:'+cor+'">'+(l.dif==null?'—':(l.dif>0?'+':'')+l.dif)+'</td>'+
       '<td style="text-align:right;white-space:nowrap;color:var(--t2)">'+(l.valorSistema==null?'—':_fmtBRL(l.valorSistema))+'</td><td style="text-align:right;font-weight:700;white-space:nowrap">'+(l.valorContado==null?'—':_fmtBRL(l.valorContado))+'</td><td style="text-align:right;white-space:nowrap;color:'+cor+'">'+(l.valor==null?'—':_fmtBRL(l.valor))+'</td></tr>';
   }).join('');
@@ -1100,7 +1105,7 @@ function _renderResultadoBalanco() {
   var tilesEnd='';
   if (endSel) { var unEnd=base.reduce(function(a,l){ return a+(l.contado||0); },0), valEnd=base.reduce(function(a,l){ return a+(l.valorContado||0); },0);
     var divEnd=base.filter(function(l){ return l.dif; }).length;
-    tilesEnd=tile('Endereço',endSel)+tile('Produtos no endereço',base.length.toLocaleString('pt-BR'))+tile('Unidades contadas aqui',(+unEnd.toFixed(3)).toLocaleString('pt-BR'))+tile('Custo contado aqui',_fmtBRL(valEnd),'#1a5c34')+tile('Divergentes (loja)',divEnd.toLocaleString('pt-BR'),'#b38600'); }
+    tilesEnd=tile('Endereço',esc(endSel))+tile('Produtos no endereço',base.length.toLocaleString('pt-BR'))+tile('Unidades contadas aqui',(+unEnd.toFixed(3)).toLocaleString('pt-BR'))+tile('Custo contado aqui',_fmtBRL(valEnd),'#1a5c34')+tile('Divergentes (loja)',divEnd.toLocaleString('pt-BR'),'#b38600'); }
   wrap.innerHTML=
     (endSel?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+tilesEnd+'</div>':'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+
       tile('Custo sistema',_fmtBRL(t.sistemaVal||0)+sub('estoque do sistema × custo'),'var(--t2)')+
@@ -1109,9 +1114,9 @@ function _renderResultadoBalanco() {
     '</div>')+
     '<div style="font-size:11px;color:var(--t3);margin-bottom:8px">'+(t.coletados||0).toLocaleString('pt-BR')+' de '+t.itens.toLocaleString('pt-BR')+' produtos com bipagem'+(t.naoColetados?' · '+t.naoColetados.toLocaleString('pt-BR')+' com estoque no sistema ainda sem contagem ('+_fmtBRL(t.naoColetadosVal)+')':'')+(t.semCusto?' · '+t.semCusto+' sem custo no catálogo, fora dos R$':'')+'</div>'+
     '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">'+
-      '<select id="res-endereco" onchange="window._resLimite=300;_renderResultadoBalanco()" style="padding:7px 10px;border:1.5px solid var(--gray2);border-radius:8px;font-size:12px;font-weight:600;font-family:inherit;background:#fff"><option value="">Todos os endereços</option>'+endsDisp.map(function(e){ return '<option value="'+e+'"'+(e===endSel?' selected':'')+'>Endereço '+e+'</option>'; }).join('')+'</select>'+
+      '<select id="res-endereco" onchange="window._resLimite=300;_renderResultadoBalanco()" style="padding:7px 10px;border:1.5px solid var(--gray2);border-radius:8px;font-size:12px;font-weight:600;font-family:inherit;background:#fff"><option value="">Todos os endereços</option>'+endsDisp.map(function(e){ return '<option value="'+esc(e)+'"'+(e===endSel?' selected':'')+'>Endereço '+esc(e)+'</option>'; }).join('')+'</select>'+
       '<label style="font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px"><input type="checkbox" id="res-so-div" '+(soDiv?'checked':'')+' onchange="_renderResultadoBalanco()" title="Contados com quantidade diferente do sistema (não coletados ficam de fora)"> Só divergentes</label>'+
-      '<input id="res-busca" placeholder="Buscar código ou descrição" value="'+busca.replace(/"/g,'&quot;')+'" oninput="window._resLimite=300;_renderResultadoBalanco()" style="flex:1;min-width:160px;padding:7px 10px;border:1.5px solid var(--gray2);border-radius:8px;font-size:12px;font-family:inherit">'+
+      '<input id="res-busca" placeholder="Buscar código ou descrição" value="'+esc(busca)+'" oninput="window._resLimite=300;_renderResultadoBalanco()" style="flex:1;min-width:160px;padding:7px 10px;border:1.5px solid var(--gray2);border-radius:8px;font-size:12px;font-family:inherit">'+
       '<span style="font-size:11px;color:var(--t3)">'+linhas.length.toLocaleString('pt-BR')+' linhas</span>'+
       '<button class="btn btn-s btn-sm" onclick="_imprimirResultadoPdf()">📄 PDF</button>'+
       '<button class="btn btn-s btn-sm" onclick="_exportarResultadoCsv()">⬇ CSV</button>'+
@@ -1214,8 +1219,8 @@ function mostrarPendenciasBalanco() {
     });
     var ncList=Object.values(nc).sort(function(a,b){ return b.qty-a.qty; });
     window._pendenciasCache={nc:ncList,sem:sem,invNome:_invAtivo.nome};
-    var ncRows=ncList.map(function(x){ return '<tr><td style="font-family:monospace;font-size:12px">'+x.ean+'</td><td style="text-align:right;font-weight:700">'+x.qty+'</td><td style="text-align:right">'+x.n+'</td><td style="font-size:11px">'+Object.keys(x.ends).join(', ')+'</td><td style="font-size:11px">'+Object.keys(x.coletores).join(', ')+'</td></tr>'; }).join('');
-    var semRows=sem.sort(function(a,b){ return String(a.endereco).localeCompare(String(b.endereco),undefined,{numeric:true})||(a.seq||0)-(b.seq||0); }).map(function(b){ return '<tr><td style="font-family:monospace">'+b.endereco+'</td><td>'+(b.desc||'')+'</td><td style="text-align:right;font-weight:700">'+b.qty+'</td><td style="font-size:11px">'+(b.coletorId||'')+'</td></tr>'; }).join('');
+    var ncRows=ncList.map(function(x){ return '<tr><td style="font-family:monospace;font-size:12px">'+esc(x.ean)+'</td><td style="text-align:right;font-weight:700">'+x.qty+'</td><td style="text-align:right">'+x.n+'</td><td style="font-size:11px">'+esc(Object.keys(x.ends).join(', '))+'</td><td style="font-size:11px">'+esc(Object.keys(x.coletores).join(', '))+'</td></tr>'; }).join('');
+    var semRows=sem.sort(function(a,b){ return String(a.endereco).localeCompare(String(b.endereco),undefined,{numeric:true})||(a.seq||0)-(b.seq||0); }).map(function(b){ return '<tr><td style="font-family:monospace">'+esc(b.endereco)+'</td><td>'+esc(b.desc||'')+'</td><td style="text-align:right;font-weight:700">'+b.qty+'</td><td style="font-size:11px">'+esc(b.coletorId||'')+'</td></tr>'; }).join('');
     if (!ncList.length&&!sem.length){ wrap.innerHTML='<div style="padding:12px;background:#f0faf5;border-radius:10px;color:#1a5c34;font-weight:700;font-size:13px">✓ Nenhuma pendência: tudo que foi bipado está no catálogo.</div>'; return; }
     wrap.innerHTML=
       '<div style="font-size:12px;color:var(--t2);margin-bottom:10px">Esses itens <b>não entram</b> na importação do ERP até serem cadastrados ou corrigidos.</div>'+
@@ -1241,7 +1246,7 @@ function _exportarPendenciasCsv() {
 function _popularSelectFolhaConf() {
   var sel=document.getElementById('folha-conf-end'); if(!sel||!_invAtivo) return;
   var ends=_invAtivo.enderecos||[];
-  sel.innerHTML='<option value="">Todos os endereços com bipagem</option>'+ends.map(function(e){ return '<option value="'+e.replace(/"/g,'&quot;')+'">'+e+'</option>'; }).join('');
+  sel.innerHTML='<option value="">Todos os endereços com bipagem</option>'+ends.map(function(e){ return '<option value="'+esc(e)+'">'+esc(e)+'</option>'; }).join('');
 }
 function imprimirFolhaConferencia() {
   if (!_invAtivo) return;
@@ -1626,7 +1631,7 @@ function renderInvBipagens(filtroEnd, filtroCol, filtroSetor) {
       if (filterSel && !filterSel.dataset.built) {
         var enderecos = _invAtivo.enderecos || [];
         filterSel.innerHTML = '<option value="">Todos os endereços</option>'+
-          enderecos.map(function(e){ return '<option value="'+e+'">'+e+'</option>'; }).join('');
+          enderecos.map(function(e){ return '<option value="'+esc(e)+'">'+esc(e)+'</option>'; }).join('');
         filterSel.dataset.built = '1';
         if (filtroEnd) filterSel.value = filtroEnd;
       }
@@ -1649,7 +1654,7 @@ function renderInvBipagens(filtroEnd, filtroCol, filtroSetor) {
             colSel.innerHTML = '<option value="">Todos os coletores ('+colIds.length+')</option>'+
               colIds.map(function(id){
                 var c=colMap[id];
-                return '<option value="'+id+'"'+(filtroCol===id?' selected':'')+'>'+c.nome+' — '+c.count+' bip</option>';
+                return '<option value="'+esc(id)+'"'+(filtroCol===id?' selected':'')+'>'+esc(c.nome)+' — '+c.count+' bip</option>';
               }).join('');
             colSel.style.display = '';
           } else {
@@ -1673,7 +1678,7 @@ function renderInvBipagens(filtroEnd, filtroCol, filtroSetor) {
       if (!tbody) return;
       var cntEl=document.getElementById('inv-bip-count'); if(cntEl) cntEl.textContent=filtrados.length.toLocaleString('pt-BR')+' bipagens';
       if (!filtrados.length) {
-        tbody.innerHTML='<tr class="erow"><td colspan="6">Nenhuma bipagem'+(filtroEnd?' neste endereço':filtroSetor?' no setor '+filtroSetor:'')+' ainda.</td></tr>';
+        tbody.innerHTML='<tr class="erow"><td colspan="6">Nenhuma bipagem'+(filtroEnd?' neste endereço':filtroSetor?' no setor '+esc(filtroSetor):'')+' ainda.</td></tr>';
         return;
       }
       var _lim=window._bipLimite||300, _rest=filtrados.length-_lim;
@@ -1683,18 +1688,18 @@ function renderInvBipagens(filtroEnd, filtroCol, filtroSetor) {
         var isCorr=b.modo==='correcao';
         var qtyTxt=isCorr
           ?'<span style="font-weight:700;color:'+(b.qty<0?'var(--r)':'var(--g)')+'">'+( b.qty>0?'+':'')+b.qty+'</span>'
-          :''+b.qty+(prod.un?' <small>'+prod.un+'</small>':'');
+          :''+b.qty+(prod.un?' <small>'+esc(prod.un)+'</small>':'');
         var seqTxt=isCorr
           ?'<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;background:#fff3e0;color:#e65100">CORR.</span>'
           :'<span style="font-weight:700;color:var(--t3)">#'+b.seq+'</span>';
-        var setorStr=b.setor?' · '+b.setor:'';
+        var setorStr=b.setor?' · '+esc(b.setor):'';
         return '<tr style="'+(isCorr?'background:#fff8f4;':'')+'">'+
           '<td>'+seqTxt+'</td>'+
-          '<td style="font-family:monospace;font-size:12px">'+(b.codigo?'<b>'+b.codigo+'</b> · ':'')+b.ean+(b.naoCadastrado?' <span style="color:#e65100;font-weight:700;font-size:10px">NC</span>':'')+'</td>'+
-          '<td style="font-size:12px">'+(prod.desc||'—')+'</td>'+
+          '<td style="font-family:monospace;font-size:12px">'+(b.codigo?'<b>'+esc(b.codigo)+'</b> · ':'')+esc(b.ean)+(b.naoCadastrado?' <span style="color:#e65100;font-weight:700;font-size:10px">NC</span>':'')+'</td>'+
+          '<td style="font-size:12px">'+esc(prod.desc||'—')+'</td>'+
           '<td style="font-weight:700;text-align:center">'+qtyTxt+'</td>'+
-          '<td style="font-size:12px">'+(b.coletorNome||'—')+'</td>'+
-          '<td style="font-size:12px">'+(isCorr?'Correção':''+b.endereco+setorStr)+' · '+hora+'</td>'+
+          '<td style="font-size:12px">'+esc(b.coletorNome||'—')+'</td>'+
+          '<td style="font-size:12px">'+(isCorr?'Correção':''+esc(b.endereco)+setorStr)+' · '+hora+'</td>'+
         '</tr>';
       }).join('')+(_rest>0?'<tr><td colspan="6" style="text-align:center;padding:12px"><button class="btn btn-s btn-sm" onclick="window._bipLimite=(window._bipLimite||300)+1000;renderInvBipagens(document.getElementById(\'inv-bip-filter\').value||null,null,document.getElementById(\'inv-bip-setor-filter\').value||null)">Mostrar mais ('+_rest.toLocaleString('pt-BR')+' restantes)</button></td></tr>':'');
     });
@@ -1767,12 +1772,12 @@ function _renderResumoTabela(){
   var sub=(c.invNome||'')+(end?' · endereço '+end:'')+(busca?' · busca "'+busca+'"':'');
   window._resumoPrintCache={linhas:linhas, sub:sub, end:end, resumo:[['Produtos',linhas.length.toLocaleString('pt-BR')],['Unidades contadas',(+totUn.toFixed(3)).toLocaleString('pt-BR')],['Custo contado',_fmtBRL(totVal)],['Venda contada',_fmtBRL(totVenda)],['Bipagens',totBips.toLocaleString('pt-BR')]]};
   var rows=linhas.slice(0,lim).map(function(l){
-    return '<tr'+(l.nc?' style="background:#fff8f4"':'')+'><td style="font-family:monospace;font-size:12px">'+(l.codigo||'—')+'</td><td style="font-family:monospace;font-size:11px">'+(l.ean||'')+'</td><td style="font-size:12px">'+l.desc+(l.nc?' <b style="color:#e65100;font-size:10px">NC</b>':'')+(l.corr?' <span title="inclui correção de '+(l.corr>0?'+':'')+l.corr+'" style="color:#b38600;font-size:10px;font-weight:700">corr.</span>':'')+'</td>'+
-      '<td style="text-align:right;font-weight:800;white-space:nowrap">'+(+l.qty.toFixed(3)).toLocaleString('pt-BR')+(l.qtyTotal!=null&&l.qtyTotal!==l.qty?' <small style="color:var(--t3);font-weight:400">de '+(+l.qtyTotal.toFixed(3)).toLocaleString('pt-BR')+'</small>':'')+'</td><td style="text-align:right;white-space:nowrap">'+l.bips+'</td><td style="font-size:11px;color:var(--t2);max-width:170px">'+(l.endsTxt||'—')+'</td><td style="font-size:11px;color:var(--t3);max-width:110px">'+(l.colsTxt||'—')+'</td>'+
+    return '<tr'+(l.nc?' style="background:#fff8f4"':'')+'><td style="font-family:monospace;font-size:12px">'+esc(l.codigo||'—')+'</td><td style="font-family:monospace;font-size:11px">'+esc(l.ean||'')+'</td><td style="font-size:12px">'+esc(l.desc)+(l.nc?' <b style="color:#e65100;font-size:10px">NC</b>':'')+(l.corr?' <span title="inclui correção de '+(l.corr>0?'+':'')+l.corr+'" style="color:#b38600;font-size:10px;font-weight:700">corr.</span>':'')+'</td>'+
+      '<td style="text-align:right;font-weight:800;white-space:nowrap">'+(+l.qty.toFixed(3)).toLocaleString('pt-BR')+(l.qtyTotal!=null&&l.qtyTotal!==l.qty?' <small style="color:var(--t3);font-weight:400">de '+(+l.qtyTotal.toFixed(3)).toLocaleString('pt-BR')+'</small>':'')+'</td><td style="text-align:right;white-space:nowrap">'+l.bips+'</td><td style="font-size:11px;color:var(--t2);max-width:170px">'+esc(l.endsTxt||'—')+'</td><td style="font-size:11px;color:var(--t3);max-width:110px">'+esc(l.colsTxt||'—')+'</td>'+
       '<td style="text-align:right;white-space:nowrap;color:var(--t2)">'+(l.custo==null?'—':_fmtBRL(l.custo))+'</td><td style="text-align:right;font-weight:700;white-space:nowrap">'+(l.valor==null?'—':_fmtBRL(l.valor))+'</td>'+
       '<td style="text-align:right;white-space:nowrap;color:var(--t2)">'+(l.venda==null?'—':_fmtBRL(l.venda))+'</td><td style="text-align:right;font-weight:700;white-space:nowrap;color:#1a3c9c">'+(l.valorVenda==null?'—':_fmtBRL(l.valorVenda))+'</td></tr>';
   }).join('');
-  var selEnd='<select onchange="window._resumoEnd=this.value;window._resumoLimite=500;_renderResumoTabela()" style="padding:6px 10px;border:1.5px solid var(--gray2);border-radius:8px;font-size:12px;font-family:inherit;background:#fff"><option value="">Todos os endereços</option>'+(c.enderecos||[]).map(function(e){ return '<option value="'+String(e).replace(/"/g,'&quot;')+'"'+(e===end?' selected':'')+'>Endereço '+e+'</option>'; }).join('')+'</select>';
+  var selEnd='<select onchange="window._resumoEnd=this.value;window._resumoLimite=500;_renderResumoTabela()" style="padding:6px 10px;border:1.5px solid var(--gray2);border-radius:8px;font-size:12px;font-family:inherit;background:#fff"><option value="">Todos os endereços</option>'+(c.enderecos||[]).map(function(e){ return '<option value="'+esc(e)+'"'+(e===end?' selected':'')+'>Endereço '+esc(e)+'</option>'; }).join('')+'</select>';
   wrap.innerHTML=
     '<div class="card">'+
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+tile('Produtos',linhas.length.toLocaleString('pt-BR'))+tile('Unidades contadas',(+totUn.toFixed(3)).toLocaleString('pt-BR'))+tile('Custo contado',_fmtBRL(totVal),'#1a5c34')+tile('Venda contada',_fmtBRL(totVenda),'#1a3c9c')+tile('Bipagens',totBips.toLocaleString('pt-BR'),'var(--t2)')+'</div>'+
@@ -1781,7 +1786,7 @@ function _renderResumoTabela(){
       (semVenda?'<button onclick="_resumoSoToggle(\'semVenda\')" title="Mostrar só esses" style="border:1.5px solid #b38600;border-radius:14px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;'+(soAtivo==='semVenda'?'background:#b38600;color:#fff':'background:#fff8e1;color:#b38600')+'">'+semVenda+' sem preço de venda'+(soAtivo==='semVenda'?' ✕':'')+'</button>':'')+
       (soAtivo?'<span>mostrando só esses — clique de novo pra voltar</span>':'<span>fora do R$ — clique pra ver quais são</span>')+'</div>':'')+
     '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">'+
-      '<input id="resumo-busca" placeholder="Buscar código, EAN ou descrição" value="'+busca.replace(/"/g,'&quot;')+'" oninput="window._resumoBusca=this.value;window._resumoLimite=500;_renderResumoTabela();var i=document.getElementById(\'resumo-busca\');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}" style="flex:1;min-width:220px;padding:8px 12px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px;font-family:inherit"/>'+
+      '<input id="resumo-busca" placeholder="Buscar código, EAN ou descrição" value="'+esc(busca)+'" oninput="window._resumoBusca=this.value;window._resumoLimite=500;_renderResumoTabela();var i=document.getElementById(\'resumo-busca\');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}" style="flex:1;min-width:220px;padding:8px 12px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px;font-family:inherit"/>'+
       selEnd+
       '<span style="font-size:11px;color:var(--t3)">'+linhas.length.toLocaleString('pt-BR')+' linhas</span>'+
       '<button class="btn btn-s btn-sm" onclick="renderResumoBipagens(true)">↻ Atualizar</button>'+
@@ -1953,7 +1958,7 @@ function buscarEanCorrecao() {
       var trEl=document.getElementById('corr-total-regs');
       var fwEl=document.getElementById('corr-form-wrap');
       var viEl=document.getElementById('corr-valor-input');
-      if(pnEl) pnEl.innerHTML='<span style="font-family:monospace;font-size:11px;color:var(--t3)">'+ean+(codigo&&codigo!==ean?' · cód. '+codigo:'')+'</span>'+(p.desc?' &nbsp;·&nbsp; <strong>'+p.desc+'</strong>':'<em style="color:var(--t3)"> — não está no catálogo</em>')+(p.un?' <small style="color:var(--t3)">'+p.un+'</small>':'');
+      if(pnEl) pnEl.innerHTML='<span style="font-family:monospace;font-size:11px;color:var(--t3)">'+esc(ean)+(codigo&&codigo!==ean?' · cód. '+esc(codigo):'')+'</span>'+(p.desc?' &nbsp;·&nbsp; <strong>'+esc(p.desc)+'</strong>':'<em style="color:var(--t3)"> — não está no catálogo</em>')+(p.un?' <small style="color:var(--t3)">'+esc(p.un)+'</small>':'');
       if(taEl) taEl.textContent=totalQty;
       if(trEl) trEl.textContent=bips.length;
       _renderCorrEnderecos();
@@ -1976,8 +1981,8 @@ function _renderCorrEnderecos() {
   var linha=function(val,titulo,sub,qty,regs){
     var sel=c.alvo===val;
     return '<label style="display:flex;align-items:center;gap:10px;padding:9px 10px;border:1.5px solid '+(sel?'var(--y)':'var(--gray2)')+';border-radius:10px;margin-bottom:6px;background:'+(sel?'#fffbe6':'#fff')+';cursor:pointer">'+
-      '<input type="radio" name="corr-alvo" value="'+val+'" '+(sel?'checked':'')+' onchange="_corrEanCache.alvo=this.value;_renderCorrEnderecos();_atualizarAlvoCorrecao();_atualizarPreviewCorrecao()" style="accent-color:var(--y);width:16px;height:16px"/>'+
-      '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">'+titulo+'</div>'+(sub?'<div style="font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+sub+'</div>':'')+'</div>'+
+      '<input type="radio" name="corr-alvo" value="'+esc(val)+'" '+(sel?'checked':'')+' onchange="_corrEanCache.alvo=this.value;_renderCorrEnderecos();_atualizarAlvoCorrecao();_atualizarPreviewCorrecao()" style="accent-color:var(--y);width:16px;height:16px"/>'+
+      '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">'+esc(titulo)+'</div>'+(sub?'<div style="font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(sub)+'</div>':'')+'</div>'+
       '<div style="text-align:right"><div style="font-size:16px;font-weight:800">'+qty+'</div><div style="font-size:10px;color:var(--t3)">'+regs+' reg.</div></div></label>';
   };
   var html='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Onde foi bipado — escolha o endereço que recebe a correção</div>';
@@ -2056,8 +2061,8 @@ function _renderUltimasBipagens(bips, invId) {
         var podeExcluir = b._id && !b._pend && !b._erro && _invColetaAtual && !_invColetaAtual.concluido;
         return '<tr style="'+(b._erro?'background:#fdecea':b._pend?'opacity:.6':'')+'">'+
           '<td><span style="font-weight:700;color:var(--t3)">#'+b.seq+'</span></td>'+
-          '<td style="font-family:monospace;font-size:12px">'+(b.codigo?'<b>'+b.codigo+'</b> · ':'')+b.ean+'</td>'+
-          '<td style="font-size:12px">'+(prod.desc||'—')+(b.naoCadastrado?' <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;background:#fff3e0;color:#e65100">NC</span>':'')+'</td>'+
+          '<td style="font-family:monospace;font-size:12px">'+(b.codigo?'<b>'+esc(b.codigo)+'</b> · ':'')+esc(b.ean)+'</td>'+
+          '<td style="font-size:12px">'+esc(prod.desc||'—')+(b.naoCadastrado?' <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;background:#fff3e0;color:#e65100">NC</span>':'')+'</td>'+
           '<td style="font-weight:700;text-align:center">'+b.qty+'</td>'+
           '<td style="text-align:center">'+(podeExcluir?'<button type="button" onclick="_pedirExclusaoBip(\''+b._id+'\')" title="Excluir esta bipagem (senha do supervisor)" style="width:32px;height:32px;border-radius:8px;border:1.5px solid var(--gray2);background:#fff;font-size:15px;cursor:pointer">🗑</button>':'')+'</td>'+
         '</tr>';
@@ -2076,13 +2081,13 @@ function _pedirExclusaoBip(id){
   var cid=(S.currentUser&&S.currentUser.clienteId)||window.KONTAR_CLIENT_ID||'';
   var sups=getUsers().filter(function(u){ return u.ativo!==false&&u.email&&u.email.indexOf('@')>0&&['admin','supervisor','gerencia'].indexOf(u.perfil)>=0&&(!u.clienteId||!cid||u.clienteId===cid); });
   var quem = sups.length
-    ? '<select id="excl-bip-sup" style="width:100%;padding:12px;border:1.5px solid var(--gray2);border-radius:10px;font-size:15px;font-family:inherit;margin-bottom:8px">'+sups.map(function(u){ return '<option value="'+u.email+'">'+(u.nome||u.email)+'</option>'; }).join('')+'</select>'
+    ? '<select id="excl-bip-sup" style="width:100%;padding:12px;border:1.5px solid var(--gray2);border-radius:10px;font-size:15px;font-family:inherit;margin-bottom:8px">'+sups.map(function(u){ return '<option value="'+esc(u.email)+'">'+esc(u.nome||u.email)+'</option>'; }).join('')+'</select>'
     : '<input id="excl-bip-sup" type="email" placeholder="E-mail do supervisor" autocomplete="off" style="width:100%;padding:12px;border:1.5px solid var(--gray2);border-radius:10px;font-size:15px;font-family:inherit;margin-bottom:8px"/>';
   _exclBipCtx={bip:bip, desc:prod.desc||''};
   var html='<div id="modal-excl-bip" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2300;display:flex;align-items:flex-end;justify-content:center">'+
     '<div style="background:#fff;border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px">'+
     '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--r);margin-bottom:4px">Excluir bipagem #'+bip.seq+'</div>'+
-    '<div style="font-size:15px;font-weight:700;margin-bottom:12px"><span style="font-family:monospace">'+(bip.codigo||bip.ean)+'</span> · '+(prod.desc||'não cadastrado')+' — <b>'+bip.qty+' un</b></div>'+
+    '<div style="font-size:15px;font-weight:700;margin-bottom:12px"><span style="font-family:monospace">'+esc(bip.codigo||bip.ean)+'</span> · '+esc(prod.desc||'não cadastrado')+' — <b>'+bip.qty+' un</b></div>'+
     '<label style="display:block;font-size:12px;font-weight:700;color:var(--t2);margin-bottom:4px">Supervisor que autoriza</label>'+quem+
     '<input id="excl-bip-senha" type="password" placeholder="Senha do supervisor" autocomplete="current-password" style="width:100%;padding:12px;border:1.5px solid var(--gray2);border-radius:10px;font-size:15px;font-family:inherit;margin-bottom:8px"/>'+
     '<input id="excl-bip-motivo" type="text" placeholder="Motivo (opcional)" autocomplete="off" style="width:100%;padding:12px;border:1.5px solid var(--gray2);border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:12px"/>'+
@@ -2165,7 +2170,7 @@ function renderTrilhaAuditoria(invId) {
       };
       tbody.innerHTML=docs.map(function(r){
         var hora=r.ts?new Date(r.ts.seconds*1000).toLocaleString('pt-BR'):'—';
-        return '<tr><td style="font-size:12px;white-space:nowrap">'+hora+'</td><td style="font-size:12px">'+(r.userName||'—')+'</td><td style="font-size:12px;font-weight:600">'+(labels[r.acao]||r.acao)+'</td><td style="font-size:12px;color:var(--t2)">'+(r.detalhes||'')+'</td></tr>';
+        return '<tr><td style="font-size:12px;white-space:nowrap">'+hora+'</td><td style="font-size:12px">'+esc(r.userName||'—')+'</td><td style="font-size:12px;font-weight:600">'+(labels[r.acao]||r.acao)+'</td><td style="font-size:12px;color:var(--t2)">'+esc(r.detalhes||'')+'</td></tr>';
       }).join('');
     }).catch(function(){ tbody.innerHTML='<tr class="erow"><td colspan="4">Erro ao carregar.</td></tr>'; });
 }
@@ -2207,7 +2212,7 @@ function verDivergencias(endereco) {
         if (!divs.length){ tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--g);padding:20px">✓ Sem divergências</td></tr>'; }
         else { tbody.innerHTML=divs.map(function(d){
           var p=_catItemDe(cat,d.ean)||{};
-          return '<tr><td style="font-family:monospace;font-size:12px">'+d.ean+'</td><td style="font-size:12px">'+(p.desc||'—')+'</td><td style="text-align:center;font-weight:700">'+d.qty1+'</td><td style="text-align:center;font-weight:700">'+d.qty2+'</td><td style="text-align:center;color:var(--r);font-weight:700">'+d.diff+'</td></tr>';
+          return '<tr><td style="font-family:monospace;font-size:12px">'+esc(d.ean)+'</td><td style="font-size:12px">'+esc(p.desc||'—')+'</td><td style="text-align:center;font-weight:700">'+d.qty1+'</td><td style="text-align:center;font-weight:700">'+d.qty2+'</td><td style="text-align:center;color:var(--r);font-weight:700">'+d.diff+'</td></tr>';
         }).join(''); }
       }
       // Mostrar resolução atual
@@ -2272,7 +2277,7 @@ function renderModalGerEnd() {
       var rb=modo==='auditoria'?'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#ede9fe;color:#5b21b6;margin-left:5px">R'+c.rodada+'</span>':'';
       var cb=c.concluido?'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#d1f0e0;color:#1a5c34;margin-left:4px">✓</span>':'';
       return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--gray);border-radius:8px;margin-bottom:6px">'+
-        '<span style="font-size:13px;font-weight:600">'+c.nome+rb+cb+'</span>'+
+        '<span style="font-size:13px;font-weight:600">'+esc(c.nome)+rb+cb+'</span>'+
         '<button onclick="removerColetorEnd(\''+invId+'\',\''+end+'\',\''+c.userId+'\')" style="background:none;border:none;cursor:pointer;color:var(--r);font-size:18px;padding:0 4px;line-height:1">×</button>'+
       '</div>';
     }).join(''); }
@@ -2285,7 +2290,7 @@ function renderModalGerEnd() {
     var assigned=cols.map(function(c){ return c.userId; });
     var avail=users.filter(function(u){ return assigned.indexOf(u.id)<0; });
     if (cols.length>=maxC){ addEl.innerHTML='<div style="font-size:12px;color:var(--t3);padding:4px 0">'+(modo==='auditoria'?'Auditoria: máx. 2 coletores.':'Limite atingido.')+'</div>'; }
-    else { addEl.innerHTML='<div style="display:flex;gap:8px;align-items:center;margin-top:10px"><select id="ger-end-select" style="flex:1;padding:8px 10px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px;font-family:inherit"><option value="">Selecionar coletor...</option>'+avail.map(function(u){ return '<option value="'+u.id+'">'+u.nome+'</option>'; }).join('')+'</select><button class="btn btn-p btn-sm" onclick="adicionarColetorEnd(\''+invId+'\',\''+end+'\')">+ Adicionar</button></div>'; }
+    else { addEl.innerHTML='<div style="display:flex;gap:8px;align-items:center;margin-top:10px"><select id="ger-end-select" style="flex:1;padding:8px 10px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px;font-family:inherit"><option value="">Selecionar coletor...</option>'+avail.map(function(u){ return '<option value="'+u.id+'">'+esc(u.nome)+'</option>'; }).join('')+'</select><button class="btn btn-p btn-sm" onclick="adicionarColetorEnd(\''+invId+'\',\''+end+'\')">+ Adicionar</button></div>'; }
   }
 }
 
@@ -2872,7 +2877,7 @@ function renderInvList() {
     return '<div class="card" style="margin-bottom:12px">'+
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
         '<div>'+
-          '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:15px;font-weight:700">'+inv.nome+filaTag+'</div>'+
+          '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:15px;font-weight:700">'+esc(inv.nome)+filaTag+'</div>'+
           '<div style="font-size:12px;color:var(--t3);margin-top:3px">'+tipoTag+'Criado '+dataStr+' · '+endCount+' endereços · '+'<span id="invcnt-'+inv.id+'">…</span> bipagens</div>'+
         '</div>'+
         '<span style="white-space:nowrap;padding:4px 14px;border-radius:20px;font-size:11px;font-weight:700;background:#d1f0e0;color:#1a5c34">ABERTO</span>'+
@@ -2950,7 +2955,7 @@ function _histRenderLista() {
     return '<div class="card" style="margin-bottom:12px">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'+
         '<div>'+
-          '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:15px;font-weight:700">'+inv.nome+'</div>'+
+          '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:15px;font-weight:700">'+esc(inv.nome)+'</div>'+
           '<div style="font-size:12px;color:var(--t3);margin-top:3px">'+tipoTag+'Encerrado '+dt+' · '+ends+' endereços · '+'<span id="invcnt-'+inv.id+'">…</span> bipagens</div>'+
         '</div>'+
         '<span style="padding:4px 14px;border-radius:20px;font-size:11px;font-weight:700;background:#f0f0f0;color:#666">ENCERRADO</span>'+
@@ -2977,7 +2982,7 @@ function renderInvComparativo() {
   if (invs.length<2) { el.innerHTML='<div style="text-align:center;padding:40px;color:var(--t3)">São necessários pelo menos 2 inventários para comparar.</div>'; return; }
   var ss='width:100%;padding:8px 10px;border:1.5px solid var(--gray2);border-radius:8px;font-size:13px;font-family:inherit';
   var opts='<option value="">Selecionar...</option>'+invs.map(function(inv){
-    return '<option value="'+inv.id+'">'+inv.nome+' ('+(inv.status==='aberto'?'ativo':'encerrado')+')</option>';
+    return '<option value="'+inv.id+'">'+esc(inv.nome)+' ('+(inv.status==='aberto'?'ativo':'encerrado')+')</option>';
   }).join('');
   el.innerHTML='<div class="card" style="margin-bottom:14px">'+
     '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:15px;font-weight:700;margin-bottom:12px">Comparativo por Endereço + EAN</div>'+
@@ -3039,7 +3044,7 @@ function _renderResultComparativo(invA,invB,bipsA,bipsB,el) {
   var nA=invA?_trunc(invA.nome,22):'Inv A',nB=invB?_trunc(invB.nome,22):'Inv B';
   var tbody=rows.map(function(r){
     var ds=r.diff>0?'color:var(--g)':'color:var(--r)',dp=r.diff>0?'+':'';
-    return '<tr><td style="font-family:monospace;font-weight:700">'+r.end+'</td><td style="font-family:monospace;font-size:12px">'+r.ean+'</td><td style="text-align:right">'+r.qA+'</td><td style="text-align:right">'+r.qB+'</td><td style="text-align:right;font-weight:700;'+ds+'">'+dp+r.diff+'</td></tr>';
+    return '<tr><td style="font-family:monospace;font-weight:700">'+esc(r.end)+'</td><td style="font-family:monospace;font-size:12px">'+esc(r.ean)+'</td><td style="text-align:right">'+r.qA+'</td><td style="text-align:right">'+r.qB+'</td><td style="text-align:right;font-weight:700;'+ds+'">'+dp+r.diff+'</td></tr>';
   }).join('');
   el.innerHTML='<div class="card" style="padding:0;overflow:hidden">'+
     '<div style="padding:10px 14px;background:var(--gray);border-bottom:1px solid var(--gray2);display:flex;align-items:center;justify-content:space-between">'+
@@ -3047,7 +3052,7 @@ function _renderResultComparativo(invA,invB,bipsA,bipsB,el) {
       '<button class="btn btn-s btn-sm" onclick="exportarComparativoCsv()">⬇ CSV</button>'+
     '</div>'+
     '<div style="overflow-x:auto"><table>'+
-    '<thead><tr><th>Endereço</th><th>EAN</th><th>'+nA+'</th><th>'+nB+'</th><th>Diferença</th></tr></thead>'+
+    '<thead><tr><th>Endereço</th><th>EAN</th><th>'+esc(nA)+'</th><th>'+esc(nB)+'</th><th>Diferença</th></tr></thead>'+
     '<tbody>'+tbody+'</tbody></table></div></div>';
   window._cmpRowsCache=rows; window._cmpNomesCache=[nA,nB];
 }
@@ -3078,14 +3083,14 @@ function _renderSelecaoEndereco(inv, bipCount) {
       var icon=_sico[s]||'📁';
       var slot=filaMap[s];
       if(slot&&slot.concluido){
-        return '<button disabled style="padding:20px 6px;border:2.5px solid #ccc;border-radius:14px;background:#f0f0f0;color:#999;font-size:14px;font-weight:800;font-family:\'Space Grotesk\',sans-serif;cursor:not-allowed;width:100%;box-sizing:border-box;line-height:1.4;opacity:.65">🔒<br>'+s+'<br><span style="font-size:10px;font-weight:600">encerrado</span></button>';
+        return '<button disabled style="padding:20px 6px;border:2.5px solid #ccc;border-radius:14px;background:#f0f0f0;color:#999;font-size:14px;font-weight:800;font-family:\'Space Grotesk\',sans-serif;cursor:not-allowed;width:100%;box-sizing:border-box;line-height:1.4;opacity:.65">🔒<br>'+esc(s)+'<br><span style="font-size:10px;font-weight:600">encerrado</span></button>';
       }
       var andamento=slot&&!slot.concluido;
       var border=andamento?'border:2.5px solid #b38600':'border:2.5px solid '+c[0];
       var bg=andamento?'background:#fffbe8':'background:'+c[1];
       var cl=andamento?'color:#b38600':'color:'+c[2];
       var ss=s.replace(/'/g,"\\'");
-      return '<button onclick="_confirmarSetorFila(\''+safeInvId+'\',\''+ss+'\',\''+ss+'\')" style="padding:20px 6px;'+border+';border-radius:14px;'+bg+';'+cl+';font-size:14px;font-weight:800;font-family:\'Space Grotesk\',sans-serif;cursor:pointer;width:100%;box-sizing:border-box;word-break:break-word;line-height:1.4">'+icon+'<br>'+s+(andamento?'<br><span style="font-size:10px;font-weight:600">em andamento</span>':'')+'</button>';
+      return '<button onclick="_confirmarSetorFila(\''+safeInvId+'\',\''+ss+'\',\''+ss+'\')" style="padding:20px 6px;'+border+';border-radius:14px;'+bg+';'+cl+';font-size:14px;font-weight:800;font-family:\'Space Grotesk\',sans-serif;cursor:pointer;width:100%;box-sizing:border-box;word-break:break-word;line-height:1.4">'+icon+'<br>'+esc(s)+(andamento?'<br><span style="font-size:10px;font-weight:600">em andamento</span>':'')+'</button>';
     }).join('');
     return '<div>'+
       '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px">Selecionar Setor</div>'+
@@ -3101,13 +3106,13 @@ function _renderSelecaoEndereco(inv, bipCount) {
     var quem,bg;
     var concl=false;
     if (slot&&!slot.concluido) {
-      quem='<span style="font-size:11px;color:#b38600;font-weight:600">👤 '+_slotNomes(slot,', ')+' — em andamento</span>';
+      quem='<span style="font-size:11px;color:#b38600;font-weight:600">👤 '+esc(_slotNomes(slot,', '))+' — em andamento</span>';
       bg='background:#fffbe8;';
     } else if (slot&&slot.concluido) {
-      quem='<span style="font-size:11px;color:#1a5c34;font-weight:600">✓ '+_slotNomes(slot,', ','')+' — finalizado'+(cnt.total?' · '+cnt.total+' bip':'')+'</span>';
+      quem='<span style="font-size:11px;color:#1a5c34;font-weight:600">✓ '+esc(_slotNomes(slot,', ',''))+' — finalizado'+(cnt.total?' · '+cnt.total+' bip':'')+'</span>';
       bg='background:#f0faf5;'; concl=true;
     } else if (cnt.total>0) {
-      quem='<span style="font-size:11px;color:var(--t2);font-weight:600">disponível · '+cnt.total+' bip já registradas'+(coletoresStr?' ('+coletoresStr+')':'')+'</span>';
+      quem='<span style="font-size:11px;color:var(--t2);font-weight:600">disponível · '+cnt.total+' bip já registradas'+(coletoresStr?' ('+esc(coletoresStr)+')':'')+'</span>';
       bg='';
     } else {
       quem='<span style="font-size:11px;color:var(--t3)">disponível</span>';
@@ -3116,10 +3121,10 @@ function _renderSelecaoEndereco(inv, bipCount) {
     var safeE=e.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     if (concl) {
       return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--gray);cursor:not-allowed;opacity:.7;'+bg+'">'+
-        '<span style="font-weight:700;font-family:monospace;font-size:14px;color:#888">🔒 '+e+'</span>'+quem+'</div>';
+        '<span style="font-weight:700;font-family:monospace;font-size:14px;color:#888">🔒 '+esc(e)+'</span>'+quem+'</div>';
     }
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--gray);cursor:pointer;'+bg+'" onclick="selecionarEnderecoFila(\''+inv.id+'\',\''+safeE+'\')">'+
-      '<span style="font-weight:700;font-family:monospace;font-size:14px">'+e+'</span>'+quem+'</div>';
+      '<span style="font-weight:700;font-family:monospace;font-size:14px">'+esc(e)+'</span>'+quem+'</div>';
   }).join('');
   return '<div>'+
     '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px">Selecionar Endereço</div>'+
@@ -3153,7 +3158,7 @@ function selecionarEnderecoFila(invId, endereco) {
   if (!found) { if(errEl) errEl.textContent='Endereço "'+endereco.trim()+'" não encontrado.'; return; }
   var slot=(inv.fila||{})[found];
   if (slot&&slot.concluido) {
-    if(errEl) errEl.innerHTML='<span style="font-size:13px">🔒 Endereço <strong>'+found+'</strong> já está encerrado.<br>Fale com o responsável pelo balanço para reabri-lo.</span>';
+    if(errEl) errEl.innerHTML='<span style="font-size:13px">🔒 Endereço <strong>'+esc(found)+'</strong> já está encerrado.<br>Fale com o responsável pelo balanço para reabri-lo.</span>';
     return;
   }
   _mostrarSetorPicker(invId, found);
@@ -3185,7 +3190,7 @@ function _mostrarSetorPicker(invId, endereco) {
     '<div id="modal-setor-picker" onclick="if(event.target===this)_fecharSetorPicker()" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2100;display:flex;align-items:flex-end;justify-content:center;padding:0">'+
       '<div style="background:#fff;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-shadow:0 -4px 32px rgba(0,0,0,.18)">'+
         '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:17px;font-weight:800;margin-bottom:4px">Selecionar Setor</div>'+
-        '<div style="font-size:13px;color:var(--t3);margin-bottom:20px">Endereço: <strong style="font-family:monospace">'+endereco+'</strong></div>'+
+        '<div style="font-size:13px;color:var(--t3);margin-bottom:20px">Endereço: <strong style="font-family:monospace">'+esc(endereco)+'</strong></div>'+
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;margin-bottom:14px" id="setor-picker-btns"></div>'+
         '<button onclick="_fecharSetorPicker()" style="width:100%;padding:11px;border:1.5px solid var(--gray2);border-radius:10px;background:#fff;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;color:var(--t2)">Cancelar</button>'+
       '</div>'+
@@ -3202,7 +3207,7 @@ function _mostrarSetorPicker(invId, endereco) {
       var c=(_setorColors[i%_setorColors.length]).split('|');
       var icon=_setorIcons[s]||'📁';
       var ss=s.replace(/'/g,"\\'");
-      return '<button onclick="_confirmarSetorFila(\''+safeInvId+'\',\''+safeEnd+'\',\''+ss+'\')" style="padding:14px 6px;border:2.5px solid '+c[0]+';border-radius:12px;background:'+c[1]+';color:'+c[2]+';font-size:13px;font-weight:800;font-family:\'Space Grotesk\',sans-serif;cursor:pointer;width:100%;box-sizing:border-box;word-break:break-word;line-height:1.3">'+icon+'<br>'+s+'</button>';
+      return '<button onclick="_confirmarSetorFila(\''+safeInvId+'\',\''+safeEnd+'\',\''+ss+'\')" style="padding:14px 6px;border:2.5px solid '+c[0]+';border-radius:12px;background:'+c[1]+';color:'+c[2]+';font-size:13px;font-weight:800;font-family:\'Space Grotesk\',sans-serif;cursor:pointer;width:100%;box-sizing:border-box;word-break:break-word;line-height:1.3">'+icon+'<br>'+esc(s)+'</button>';
     }).join('');
   }
 }
@@ -3459,18 +3464,18 @@ function gerarQREnderecos() {
     var safeId = 'bc'+i;
     return '<div class="qr-card">'
       + logoCard
-      + '<img src="https://api.qrserver.com/v1/create-qr-code/?data='+enc+'&size=150x150&margin=4" width="150" height="150" alt="'+end+'"/>'
+      + '<img src="https://api.qrserver.com/v1/create-qr-code/?data='+enc+'&size=150x150&margin=4" width="150" height="150" alt="'+esc(end)+'"/>'
       + '<div class="divider"></div>'
       + '<svg id="'+safeId+'" class="barcode"></svg>'
-      + '<div class="addr">'+end+'</div>'
-      + '<div class="inv-info">'+inv.loja+'</div>'
+      + '<div class="addr">'+esc(end)+'</div>'
+      + '<div class="inv-info">'+esc(inv.loja)+'</div>'
       + '</div>';
   }).join('');
   var barcodeInits = enderecos.map(function(end, i) {
     return 'JsBarcode("#bc'+i+'","'+end.replace(/"/g,'\\"')+'",{format:"CODE128",width:1.6,height:48,displayValue:false,margin:4});';
   }).join('');
   var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
-    + '<title>Etiquetas — '+inv.loja+'</title>'
+    + '<title>Etiquetas — '+esc(inv.loja)+'</title>'
     + '<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>'
     + '<style>'
     + '*{box-sizing:border-box;margin:0;padding:0}'
@@ -3495,7 +3500,7 @@ function gerarQREnderecos() {
     + '</style></head><body>'
     + '<div class="header">'
     + (logoSrc ? '<img src="'+logoSrc+'" alt="Logo"/>' : '<div class="header-fb">Kontar</div>')
-    + '<div class="header-info"><h1>Etiquetas de Endereço — Inventário</h1><p>'+inv.loja+' &nbsp;|&nbsp; '+data+'</p></div>'
+    + '<div class="header-info"><h1>Etiquetas de Endereço — Inventário</h1><p>'+esc(inv.loja)+' &nbsp;|&nbsp; '+data+'</p></div>'
     + '</div>'
     + '<div class="grid">'+cards+'</div>'
     + '<div class="instr">Scanner 2D: escaneie o QR code &nbsp;|&nbsp; Scanner 1D: escaneie o código de barras &nbsp;|&nbsp; Sem scanner: câmera do celular ou digitação</div>'
@@ -3594,11 +3599,11 @@ function _htmlIdColetorForm() {
     '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:19px;font-weight:800;margin-bottom:6px">Identificação</div>'+
     '<div style="font-size:13px;color:var(--t2);margin-bottom:20px">Informe seu ID e nome para começar.</div>'+
     '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);display:block;margin-bottom:8px">ID de Coletor</label>'+
-    '<input id="coletor-id-novo" type="text" value="'+atual+'" placeholder="Ex: 01, A1, C3" autocomplete="off" '+
+    '<input id="coletor-id-novo" type="text" value="'+esc(atual)+'" placeholder="Ex: 01, A1, C3" autocomplete="off" '+
       'style="width:100%;padding:14px;border:2.5px solid var(--y);border-radius:10px;font-size:22px;font-weight:700;font-family:monospace;text-align:center;letter-spacing:3px;margin-bottom:12px;box-sizing:border-box" '+
       'onkeydown="if(event.key===\'Enter\'){document.getElementById(\'coletor-nome-novo\').focus();}"/>'+
     '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);display:block;margin-bottom:8px">Seu Nome</label>'+
-    '<input id="coletor-nome-novo" type="text" value="'+nomeAtual+'" placeholder="Ex: João Freire" autocomplete="off" '+
+    '<input id="coletor-nome-novo" type="text" value="'+esc(nomeAtual)+'" placeholder="Ex: João Freire" autocomplete="off" '+
       'style="width:100%;padding:13px;border:1.5px solid var(--gray2);border-radius:10px;font-size:15px;margin-bottom:16px;box-sizing:border-box;font-family:inherit" '+
       'onkeydown="if(event.key===\'Enter\')_confirmarIdColetor()"/>'+
     '<button onclick="_confirmarIdColetor()" style="width:100%;padding:14px;background:var(--y);color:#111;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Começar →</button>'+
@@ -3669,7 +3674,7 @@ function renderColeta() {
       // Só o estado do slot (vem no doc do inventário): não baixa as bipagens inteiras.
       wrap.innerHTML='<div>'+
         '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">'+
-          '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:17px;font-weight:700;flex:1">'+fresh.nome+'</div>'+
+          '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:17px;font-weight:700;flex:1">'+esc(fresh.nome)+'</div>'+
           '<span style="padding:4px 14px;border-radius:20px;font-size:11px;font-weight:700;background:#d1f0e0;color:#1a5c34">ABERTO</span>'+
         '</div>'+
         _renderSelecaoEndereco(fresh, {})+'</div>';
@@ -3740,22 +3745,22 @@ function renderColeta() {
   var _chipId=_getIdColetor(), _chipNome=_getNomeColetor();
   var coletorChip='<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:9px 14px;background:#fff8e1;border:1.5px solid #f5c518;border-radius:10px">'+
     '<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#b38600">Coletor</span>'+
-    '<span style="font-size:17px;font-weight:800;font-family:monospace;letter-spacing:2px">'+_chipId+'</span>'+
-    (_chipNome?'<span style="font-size:13px;font-weight:600;color:var(--t2);flex:1">'+_chipNome+'</span>':'<span style="flex:1"></span>')+
+    '<span style="font-size:17px;font-weight:800;font-family:monospace;letter-spacing:2px">'+esc(_chipId)+'</span>'+
+    (_chipNome?'<span style="font-size:13px;font-weight:600;color:var(--t2);flex:1">'+esc(_chipNome)+'</span>':'<span style="flex:1"></span>')+
     '<button onclick="_editarIdColetor()" style="padding:4px 10px;background:#fff;border:1.5px solid #ddd;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--t2)">✎ Mudar</button>'+
   '</div>';
   wrap.innerHTML=coletorChip+mudarBtn+
     '<div style="background:#fff;border-radius:14px;border:1px solid var(--gray2);padding:20px;box-shadow:var(--sh);margin-bottom:16px">'+
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">'+
         '<div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--t3)">Endereço</div>'+
-          '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:32px;font-weight:800;color:var(--t)">'+end+'</div>'+
+          '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:32px;font-weight:800;color:var(--t)">'+esc(end)+'</div>'+
           '<div style="margin-top:4px">'+mb+'</div></div>'+
-        '<div style="text-align:right"><div style="font-size:12px;color:var(--t3);max-width:180px">'+inv.nome+'</div>'+
+        '<div style="text-align:right"><div style="font-size:12px;color:var(--t3);max-width:180px">'+esc(inv.nome)+'</div>'+
           '<div id="inv-seq-label" style="font-size:13px;font-weight:700;color:var(--g);margin-top:4px">Seq: —</div></div>'+
       '</div>'+scanHtml+
     '</div>'+
     '<div style="background:#fff;border-radius:14px;border:1px solid var(--gray2);padding:20px;box-shadow:var(--sh)">'+
-      '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:14px;font-weight:700;margin-bottom:12px">Minhas bipagens — Endereço '+end+(modo==='auditoria'?' (Rodada '+rodada+')':'')+'</div>'+
+      '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:14px;font-weight:700;margin-bottom:12px">Minhas bipagens — Endereço '+esc(end)+(modo==='auditoria'?' (Rodada '+rodada+')':'')+'</div>'+
       '<div id="inv-ultimas-wrap"><div style="text-align:center;padding:24px;color:var(--t3);font-size:13px">Carregando...</div></div>'+
     '</div>';
   if (!concluido) {
@@ -3828,8 +3833,8 @@ function _exibirModalFinalizar(bips) {
   var rows=bips.map(function(b){
     var p=_catItemDe(cat,b.codigo||b.ean)||{};
     return '<tr>'+
-      '<td style="font-family:monospace;font-size:12px;white-space:nowrap">'+b.ean+'</td>'+
-      '<td style="font-size:12px;color:var(--t2)">'+(p.desc||'<span style="color:var(--t3)">—</span>')+'</td>'+
+      '<td style="font-family:monospace;font-size:12px;white-space:nowrap">'+esc(b.ean)+'</td>'+
+      '<td style="font-size:12px;color:var(--t2)">'+(p.desc?esc(p.desc):'<span style="color:var(--t3)">—</span>')+'</td>'+
       '<td style="text-align:right;font-weight:700;font-size:13px">'+b.qty+(b.fator>1?'<span style="font-size:10px;color:var(--t3)"> ×'+b.fator+'</span>':'')+'</td>'+
     '</tr>';
   }).join('');
@@ -3838,7 +3843,7 @@ function _exibirModalFinalizar(bips) {
       'style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center">'+
       '<div style="background:#fff;border-radius:18px 18px 0 0;padding:24px 20px 28px;width:100%;max-width:520px;max-height:82vh;display:flex;flex-direction:column;box-sizing:border-box">'+
         '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:17px;font-weight:800;margin-bottom:2px">Finalizar Endereço</div>'+
-        '<div style="font-size:26px;font-weight:800;font-family:monospace;letter-spacing:2px;color:var(--t);margin-bottom:4px">'+end+'</div>'+
+        '<div style="font-size:26px;font-weight:800;font-family:monospace;letter-spacing:2px;color:var(--t);margin-bottom:4px">'+esc(end)+'</div>'+
         (rodada>1?'<div style="font-size:12px;color:#5b21b6;font-weight:700;margin-bottom:8px">Rodada '+rodada+'</div>':'')+
         '<div style="display:flex;gap:10px;margin-bottom:14px">'+
           '<div style="flex:1;padding:12px 8px;background:#f5f5f5;border-radius:12px;text-align:center">'+
@@ -4042,7 +4047,7 @@ function renderDashboardRealtime(bips) {
       var mins=Math.floor((agora-ultimaBipEnd[r.end])/60000);
       timeoutWarn='<span title="Sem bipagem há '+mins+' min" style="display:inline-block;padding:1px 6px;border-radius:8px;background:#fdecea;color:#c0392b;font-size:10px;font-weight:700;margin-left:4px">⚠ '+mins+'min</span>';
     }
-    return '<tr><td><strong>'+r.end+'</strong>'+timeoutWarn+'</td><td>'+mb+'</td><td style="font-size:12px;color:var(--t2)">'+r.colTxt+'</td><td style="text-align:center;font-weight:700">'+r.total+'</td><td>'+(sbMap[r.status]||r.status)+'</td><td>'+divCell+'</td></tr>';
+    return '<tr><td><strong>'+esc(r.end)+'</strong>'+timeoutWarn+'</td><td>'+mb+'</td><td style="font-size:12px;color:var(--t2)">'+esc(r.colTxt)+'</td><td style="text-align:center;font-weight:700">'+r.total+'</td><td>'+(sbMap[r.status]||r.status)+'</td><td>'+divCell+'</td></tr>';
   }).join('');
 }
 
@@ -4074,7 +4079,7 @@ function gerarRelPDF() {
         status=resolucoes[e]?'Resolvido':allD?'Concluido':atrib.coletores.length?'Em andamento':'Pendente';
       }
       var sc=statusBg[status]||'#f0f0f0';
-      return '<tr><td style="font-family:monospace;font-weight:700">'+e+'</td><td>'+modo+'</td><td style="font-size:11px">'+colTxt+'</td><td style="text-align:center">'+endBips+'</td><td><span style="padding:2px 8px;border-radius:10px;background:'+sc+';font-size:10px;font-weight:700">'+status+'</span></td></tr>';
+      return '<tr><td style="font-family:monospace;font-weight:700">'+esc(e)+'</td><td>'+modo+'</td><td style="font-size:11px">'+esc(colTxt)+'</td><td style="text-align:center">'+endBips+'</td><td><span style="padding:2px 8px;border-radius:10px;background:'+sc+';font-size:10px;font-weight:700">'+status+'</span></td></tr>';
     }).join('');
     var divSection='';
     if (!isModoFila) {
@@ -4082,7 +4087,7 @@ function gerarRelPDF() {
       enderecos.forEach(function(e){
         var r1=bips.filter(function(b){ return b.endereco===e&&(b.rodada||1)===1; });
         var r2=bips.filter(function(b){ return b.endereco===e&&(b.rodada||1)===2; });
-        if (r2.length){ var divs=_calcDivergencias(r1,r2); if(divs.length){ var res=resolucoes[e]; divRows.push('<tr><td style="font-family:monospace;font-weight:700">'+e+'</td><td style="text-align:center">'+divs.length+'</td><td>'+(res?'R'+res.rodada+' ok':'Pendente')+'</td><td>'+(res?res.resolvidoPor||'-':'-')+'</td></tr>'); } }
+        if (r2.length){ var divs=_calcDivergencias(r1,r2); if(divs.length){ var res=resolucoes[e]; divRows.push('<tr><td style="font-family:monospace;font-weight:700">'+esc(e)+'</td><td style="text-align:center">'+divs.length+'</td><td>'+(res?'R'+res.rodada+' ok':'Pendente')+'</td><td>'+esc(res?res.resolvidoPor||'-':'-')+'</td></tr>'); } }
       });
       if (divRows.length) {
         divSection='<h3 style="margin:16px 0 6px;color:#c0392b">Divergencias de Auditoria</h3>'
@@ -4108,11 +4113,11 @@ function gerarRelPDF() {
       +'th{background:#e8e8e8;padding:5px 8px;text-align:left;border:1px solid #ccc;font-size:10px}'
       +'td{padding:4px 8px;border-bottom:1px solid #eee}'
       +'@media print{@page{margin:12mm}}';
-    var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatorio - '+inv.nome+'</title><style>'+css+'</style></head>'
+    var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatorio - '+esc(inv.nome)+'</title><style>'+css+'</style></head>'
       +'<body><div class="ph">'
       +(logoSrc?'<img src="'+logoSrc+'" alt="Logo"/>':'<div class="ph-fb">Kontar</div>')
       +'<div class="ph-info"><h1>Relatorio de Inventario</h1>'
-      +'<p>'+inv.nome+' &nbsp;|&nbsp; Status: '+inv.status.toUpperCase()+' &nbsp;|&nbsp; Gerado: '+dtStr+'</p></div></div>'
+      +'<p>'+esc(inv.nome)+' &nbsp;|&nbsp; Status: '+inv.status.toUpperCase()+' &nbsp;|&nbsp; Gerado: '+dtStr+'</p></div></div>'
       +'<div class="ct">'
       +'<div class="stats">'
       +'<div class="sb"><strong>'+enderecos.length+'</strong><span>Enderecos</span></div>'
@@ -4176,14 +4181,14 @@ function gerarPDFBipagens() {
         var eanRows=Object.keys(slot.eans).sort().map(function(ean){
           var qty=slot.eans[ean];
           var desc=((_catItemDe(cat,ean)||{}).desc)||'-';
-          return '<tr><td style="font-family:monospace;font-size:10px">'+ean+'</td><td>'+desc+'</td><td style="text-align:center;font-weight:700">'+qty+'</td></tr>';
+          return '<tr><td style="font-family:monospace;font-size:10px">'+esc(ean)+'</td><td>'+esc(desc)+'</td><td style="text-align:center;font-weight:700">'+qty+'</td></tr>';
         });
         var sub=Object.keys(slot.eans).reduce(function(s,k){ return s+slot.eans[k]; },0);
         grandTotal+=sub;
         return '<div style="margin-bottom:14px;break-inside:avoid">'
           +'<div style="padding:7px 10px;font-size:12px;font-weight:700;background:'+bg+';border-left:3px solid '+bc+';border-radius:3px">'
-          +end+(setor?' ['+setor+']':'')
-          +'<span style="font-weight:400;font-size:10px;margin-left:10px;color:#555">Coletores: '+coletores+'</span></div>'
+          +esc(end)+(setor?' ['+esc(setor)+']':'')
+          +'<span style="font-weight:400;font-size:10px;margin-left:10px;color:#555">Coletores: '+esc(coletores)+'</span></div>'
           +'<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px">'
           +'<thead><tr><th style="background:#e8e8e8;padding:4px 8px;text-align:left;border:1px solid #ccc;width:100px">EAN</th>'
           +'<th style="background:#e8e8e8;padding:4px 8px;text-align:left;border:1px solid #ccc">Descricao</th>'
@@ -4192,7 +4197,7 @@ function gerarPDFBipagens() {
           +'<tr style="background:#f0f0f0"><td></td><td style="padding:4px 8px;font-weight:700;border-bottom:1px solid #ddd">Subtotal</td><td style="padding:4px 8px;text-align:center;font-weight:700;border-bottom:1px solid #ddd">'+sub+'</td></tr>'
           +'</tbody></table></div>';
       }).join('');
-      var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Bipagens - '+inv.nome+'</title>'
+      var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Bipagens - '+esc(inv.nome)+'</title>'
         +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:20px}'
         +'.ph{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #F97316;padding-bottom:14px;margin-bottom:16px}'
         +'.ph img{height:72px;object-fit:contain}.ph-fb{font-size:20px;font-weight:800;color:#111}'
@@ -4203,8 +4208,8 @@ function gerarPDFBipagens() {
         +'<body><div class="ph">'
         +(logoSrc?'<img src="'+logoSrc+'" alt="Logo"/>':'<div class="ph-fb">Kontar</div>')
         +'<div class="ph-info"><h1>Bipagens por Endereco</h1>'
-        +'<p>'+inv.nome+' &nbsp;|&nbsp; Gerado: '+dtStr+' &nbsp;|&nbsp; '+bipsFilt.length+' bipagens</p></div></div>'
-        +'<div class="fi">Filtro: '+filtroStr+'</div>'
+        +'<p>'+esc(inv.nome)+' &nbsp;|&nbsp; Gerado: '+dtStr+' &nbsp;|&nbsp; '+bipsFilt.length+' bipagens</p></div></div>'
+        +'<div class="fi">Filtro: '+esc(filtroStr)+'</div>'
         +'<div class="ct">'+bodyHtml
         +'<div style="margin-top:16px;padding:10px 14px;background:#111;color:#F97316;font-size:14px;font-weight:700;border-radius:4px">'
         +'TOTAL GERAL: '+grandTotal+' unidades &nbsp;|&nbsp; '+bipsFilt.length+' itens bipados &nbsp;|&nbsp; '+enderecos.length+' endereco(s)</div>'
@@ -4354,12 +4359,12 @@ function renderInvEnderecos() {
     var filaMap=inv.fila||{};
     tbody.innerHTML=enderecos.map(function(end){
       var slot=filaMap[end];
-      var colTxt=slot&&_slotColetores(slot).length?_slotColetores(slot).map(function(c){ return '<div>'+(c.nome||c.coletorId||'?')+(c.concluido?' <span style="color:#1a5c34;font-weight:700">✓</span>':'')+'</div>'; }).join(''):'<span style="color:var(--t3)">—</span>';
+      var colTxt=slot&&_slotColetores(slot).length?_slotColetores(slot).map(function(c){ return '<div>'+esc(c.nome||c.coletorId||'?')+(c.concluido?' <span style="color:#1a5c34;font-weight:700">✓</span>':'')+'</div>'; }).join(''):'<span style="color:var(--t3)">—</span>';
       var status=!slot?'sem-coletor':slot.concluido?'concluido':'aguardando';
       var safeEnd=end.replace(/'/g,"\\'");
       var reabrirBtn=isAberto&&isAdmin&&slot&&slot.concluido?'<button class="btn btn-s btn-sm" onclick="reabrirEndereco(\''+invId+'\',\''+safeEnd+'\')" style="color:var(--r);border-color:var(--r)">↩ Reabrir</button>':'';
-      var endLabel=isModoSet?(_reIco[end]||'📁')+' '+end:'<strong>'+end+'</strong>';
-      var setorBadge=(!isModoSet&&slot&&slot.setor)?'<br><span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;'+(slot.setor==='ESTOQUE'?'background:#e8f0ff;color:#1a3c9c':'background:#fff8e1;color:#b38600')+'">'+slot.setor+'</span>':'';
+      var endLabel=isModoSet?(_reIco[end]||'📁')+' '+esc(end):'<strong>'+esc(end)+'</strong>';
+      var setorBadge=(!isModoSet&&slot&&slot.setor)?'<br><span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;'+(slot.setor==='ESTOQUE'?'background:#e8f0ff;color:#1a3c9c':'background:#fff8e1;color:#b38600')+'">'+esc(slot.setor)+'</span>':'';
       return '<tr>'+
         '<td>'+endLabel+setorBadge+'</td>'+
         '<td><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#e8f4ff;color:#1a5c9c">FILA</span></td>'+
@@ -4376,13 +4381,13 @@ function renderInvEnderecos() {
       var mb=modo==='auditoria'
         ?'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#ede9fe;color:#5b21b6">AUDITORIA</span>'
         :'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#e8f5ee;color:#1a5c34">COLABR.</span>';
-      var colTxt=cols.length?cols.map(function(c){ return c.nome+(modo==='auditoria'?' R'+c.rodada:'')+(c.concluido?' ✓':''); }).join(', '):'<span style="color:var(--t3)">—</span>';
+      var colTxt=cols.length?cols.map(function(c){ return esc(c.nome)+(modo==='auditoria'?' R'+c.rodada:'')+(c.concluido?' ✓':''); }).join(', '):'<span style="color:var(--t3)">—</span>';
       var allDone=cols.length&&cols.every(function(c){ return c.concluido; });
       var status=!cols.length?'sem-coletor':allDone?'concluido':'aguardando';
       var safeEnd=end.replace(/'/g,"\\'");
       var reabrirBtn=isAberto&&isAdmin&&allDone?'<button class="btn btn-s btn-sm" onclick="reabrirEndereco(\''+invId+'\',\''+safeEnd+'\')" style="color:var(--r);border-color:var(--r)">↩ Reabrir</button>':'';
       return '<tr>'+
-        '<td><strong>'+end+'</strong></td>'+
+        '<td><strong>'+esc(end)+'</strong></td>'+
         '<td>'+mb+'</td>'+
         '<td id="inv-coltxt-'+end.replace(/[^a-z0-9]/gi,'_')+'" style="font-size:12px">'+colTxt+'</td>'+
         '<td id="inv-ec-'+end.replace(/[^a-z0-9]/gi,'_')+'">—</td>'+
@@ -4556,9 +4561,9 @@ function renderInvColetores() {
           list.map(function(c){
             var ts=c.registradoEm?new Date(c.registradoEm.seconds*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
             return '<tr>'+
-              '<td><strong style="font-family:monospace;font-size:15px">'+c.coletorId+'</strong></td>'+
-              '<td>'+c.nome+'</td>'+
-              '<td style="font-size:11px;color:var(--t3)">'+(c.userNome||'—')+'</td>'+
+              '<td><strong style="font-family:monospace;font-size:15px">'+esc(c.coletorId)+'</strong></td>'+
+              '<td>'+esc(c.nome)+'</td>'+
+              '<td style="font-size:11px;color:var(--t3)">'+esc(c.userNome||'—')+'</td>'+
               '<td style="font-size:11px;color:var(--t3)">'+ts+'</td>'+
               '<td style="white-space:nowrap;text-align:right">'+
                 '<button class="btn btn-s btn-sm" onclick="_abrirModalEditColetor(\''+c._regKey+'\')" title="Editar" style="padding:5px 9px;margin-right:4px">✎</button>'+
@@ -4579,9 +4584,9 @@ function _abrirModalEditColetor(regKey) {
       '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:17px;font-weight:800;margin-bottom:4px">Editar coletor</div>'+
       '<div style="font-size:12px;color:var(--t3);margin-bottom:18px">Corrige o registro e atualiza também as bipagens já feitas por ele neste inventário.</div>'+
       '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);display:block;margin-bottom:6px">ID de Coletor</label>'+
-      '<input id="edit-coletor-id" type="text" value="'+cur.coletorId+'" style="width:100%;padding:11px;border:1.5px solid var(--gray2);border-radius:9px;font-size:15px;font-family:monospace;margin-bottom:12px;box-sizing:border-box"/>'+
+      '<input id="edit-coletor-id" type="text" value="'+esc(cur.coletorId)+'" style="width:100%;padding:11px;border:1.5px solid var(--gray2);border-radius:9px;font-size:15px;font-family:monospace;margin-bottom:12px;box-sizing:border-box"/>'+
       '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);display:block;margin-bottom:6px">Nome</label>'+
-      '<input id="edit-coletor-nome" type="text" value="'+(cur.nome||'')+'" style="width:100%;padding:11px;border:1.5px solid var(--gray2);border-radius:9px;font-size:14px;margin-bottom:18px;box-sizing:border-box;font-family:inherit"/>'+
+      '<input id="edit-coletor-nome" type="text" value="'+esc(cur.nome||'')+'" style="width:100%;padding:11px;border:1.5px solid var(--gray2);border-radius:9px;font-size:14px;margin-bottom:18px;box-sizing:border-box;font-family:inherit"/>'+
       '<div style="display:flex;gap:10px">'+
         '<button onclick="_fecharModalEditColetor()" style="flex:1;padding:12px;background:#fff;border:1.5px solid var(--gray2);border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--t2)">Cancelar</button>'+
         '<button onclick="_salvarEditColetor(\''+regKey+'\')" style="flex:1;padding:12px;background:var(--y);color:#111;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Salvar</button>'+
@@ -4773,8 +4778,8 @@ function _abrirConfirmaCurto(val,r){
   var html='<div id="modal-curto" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2300;display:flex;align-items:flex-end;justify-content:center">'+
     '<div style="background:#fff;border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px">'+
     '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#b38600;margin-bottom:4px">Código curto lido pelo leitor</div>'+
-    '<div style="font-size:26px;font-weight:800;font-family:monospace;margin-bottom:2px">'+val+'</div>'+
-    '<div style="font-size:15px;font-weight:700;margin-bottom:14px">'+(r.desc||'')+(r.un?' <span style="font-weight:400;color:var(--t3)">— '+r.un+'</span>':'')+'</div>'+
+    '<div style="font-size:26px;font-weight:800;font-family:monospace;margin-bottom:2px">'+esc(val)+'</div>'+
+    '<div style="font-size:15px;font-weight:700;margin-bottom:14px">'+esc(r.desc||'')+(r.un?' <span style="font-weight:400;color:var(--t3)">— '+esc(r.un)+'</span>':'')+'</div>'+
     '<div style="font-size:12px;color:var(--t2);margin-bottom:14px">É esse produto? Se o leitor pegou só parte de um código de barras, cancele e leia de novo.</div>'+
     '<div style="display:flex;gap:10px">'+
       '<button onclick="_confirmaCurto(false)" style="flex:1;padding:13px;background:#fff;border:1.5px solid var(--gray2);border-radius:10px;font-size:14px;font-weight:700;font-family:inherit">Cancelar</button>'+
@@ -4949,9 +4954,9 @@ function _abrirModalJaColetado(lido,res,qtyTotal,fator,prev){
   _dupCtx={lido:lido,res:res,fator:fator,prev:prev}; _dupAbertoTs=Date.now();
   _bipSom('alerta');
   var qtdTela=_qtdFmt(_qtdNum(qtyTotal/(fator||1)));
-  var titulo=res?('<b style="font-family:monospace">'+res.codigo+'</b> · '+(res.desc||'')):('<b style="font-family:monospace">'+lido+'</b> · não cadastrado');
+  var titulo=res?('<b style="font-family:monospace">'+esc(res.codigo)+'</b> · '+esc(res.desc||'')):('<b style="font-family:monospace">'+esc(lido)+'</b> · não cadastrado');
   var vis=prev.locais.slice(0,5), resto=prev.locais.length-vis.length;
-  var lista=vis.map(function(l){ return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--gray2)"><span>End. <b>'+l.endereco+'</b> <span style="color:var(--t3)">· '+l.coletor+'</span></span><b>'+l.qty+' un</b></div>'; }).join('')+(resto>0?'<div style="font-size:12px;color:var(--t3);padding:6px 0">mais '+resto+' local(is)</div>':'');
+  var lista=vis.map(function(l){ return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--gray2)"><span>End. <b>'+esc(l.endereco)+'</b> <span style="color:var(--t3)">· '+esc(l.coletor)+'</span></span><b>'+l.qty+' un</b></div>'; }).join('')+(resto>0?'<div style="font-size:12px;color:var(--t3);padding:6px 0">mais '+resto+' local(is)</div>':'');
   var html='<div id="modal-dup" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2300;display:flex;align-items:flex-end;justify-content:center">'+
     '<div style="background:#fff;border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px">'+
     '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#b38600;margin-bottom:4px">Código já coletado neste inventário</div>'+
@@ -4988,7 +4993,7 @@ function _abrirPickerMultiplos(lista, lido) {
     '<div style="background:#fff;border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px">'+
     '<div style="font-weight:800;font-size:16px;margin-bottom:4px">Mesmo código de barras em '+lista.length+' produtos</div>'+
     '<div style="font-size:12px;color:var(--t3);margin-bottom:12px">Toque no produto certo.</div>'+
-    lista.map(function(p,i){ return '<button onclick="_escolherMultiplo('+i+')" style="width:100%;text-align:left;padding:12px;margin-bottom:8px;border:1.5px solid var(--gray2);border-radius:10px;background:#fff;font-family:inherit;cursor:pointer"><b style="font-family:monospace">'+p.codigo+'</b> · '+p.desc+'</button>'; }).join('')+
+    lista.map(function(p,i){ return '<button onclick="_escolherMultiplo('+i+')" style="width:100%;text-align:left;padding:12px;margin-bottom:8px;border:1.5px solid var(--gray2);border-radius:10px;background:#fff;font-family:inherit;cursor:pointer"><b style="font-family:monospace">'+esc(p.codigo)+'</b> · '+esc(p.desc)+'</button>'; }).join('')+
     '<button onclick="_cancelarMultiplo()" style="width:100%;padding:11px;border:1.5px solid var(--gray2);border-radius:10px;background:#fff;font-family:inherit">Cancelar</button></div></div>';
   window._multiLista=lista; window._multiLido=lido;
   document.body.insertAdjacentHTML('beforeend',html);
@@ -5035,11 +5040,11 @@ function _renderNaoColetados() {
   var lista=b?c.itens.filter(function(it){ return ((it.c||'')+' '+(it.e||'')+' '+(it.d||'')).toLowerCase().indexOf(b)>=0; }):c.itens;
   var lim=window._naoColLimite||500;
   var rows=lista.slice(0,lim).map(function(it){
-    return '<tr><td style="font-family:monospace;font-size:12px">'+(it.c||'—')+'</td><td style="font-family:monospace;font-size:12px">'+(it.e||'—')+'</td><td>'+(it.d||'—')+'</td><td style="color:var(--t3)">'+(it.u||'')+'</td></tr>';
+    return '<tr><td style="font-family:monospace;font-size:12px">'+esc(it.c||'—')+'</td><td style="font-family:monospace;font-size:12px">'+esc(it.e||'—')+'</td><td>'+esc(it.d||'—')+'</td><td style="color:var(--t3)">'+esc(it.u||'')+'</td></tr>';
   }).join('');
   wrap.innerHTML=
     '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">'+
-      '<input id="naocol-busca" placeholder="Buscar código, EAN ou descrição" value="'+(c.busca||'').replace(/"/g,'&quot;')+'" oninput="window._naoColetadosCache.busca=this.value;window._naoColLimite=500;_renderNaoColetados();var i=document.getElementById(\'naocol-busca\');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}" style="flex:1;min-width:180px;padding:7px 10px;border:1.5px solid var(--gray2);border-radius:8px;font-size:12px;font-family:inherit"/>'+
+      '<input id="naocol-busca" placeholder="Buscar código, EAN ou descrição" value="'+esc(c.busca||'')+'" oninput="window._naoColetadosCache.busca=this.value;window._naoColLimite=500;_renderNaoColetados();var i=document.getElementById(\'naocol-busca\');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}" style="flex:1;min-width:180px;padding:7px 10px;border:1.5px solid var(--gray2);border-radius:8px;font-size:12px;font-family:inherit"/>'+
       '<span style="font-size:11px;color:var(--t3)">'+lista.length.toLocaleString('pt-BR')+' de '+c.total.toLocaleString('pt-BR')+' sem coleta</span>'+
       '<button class="btn btn-s btn-sm" onclick="_imprimirNaoColetados()">🖨 Imprimir</button>'+
       '<button class="btn btn-s btn-sm" onclick="_exportarNaoColetadosCsv()">⬇ Excel</button>'+
@@ -5127,7 +5132,7 @@ function renderProdutividade() {
       var bph=durMin>1?Math.round(p.bips/(durMin/60)):p.bips;
       var durStr=durMin<1?'< 1 min':(durMin<60?Math.round(durMin)+' min':Math.floor(durMin/60)+'h '+Math.round(durMin%60)+'min');
       return '<tr>'+
-        '<td><div style="font-family:monospace;font-weight:700;font-size:13px">'+id+'</div>'+(p.nome&&p.nome!==id?'<div style="font-size:11px;color:var(--t2)">'+p.nome+'</div>':'')+'</td>'+
+        '<td><div style="font-family:monospace;font-weight:700;font-size:13px">'+esc(id)+'</div>'+(p.nome&&p.nome!==id?'<div style="font-size:11px;color:var(--t2)">'+esc(p.nome)+'</div>':'')+'</td>'+
         '<td style="text-align:right">'+p.bips+'</td>'+
         '<td style="text-align:right">'+p.pecas+'</td>'+
         '<td style="text-align:right">'+durStr+'</td>'+
@@ -5159,7 +5164,7 @@ function renderColetaAvulsa() {
       '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:19px;font-weight:800;margin-bottom:6px">Identificação</div>'+
       '<div style="font-size:13px;color:var(--t2);margin-bottom:22px">Informe seu ID de coletor para começar.</div>'+
       '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);display:block;margin-bottom:8px">ID de Coletor</label>'+
-      '<input id="avulsa-coletor-id" type="text" value="'+(atual||'')+'" placeholder="Ex: 01, A1, JOAO" autocomplete="off" '+
+      '<input id="avulsa-coletor-id" type="text" value="'+esc(atual||'')+'" placeholder="Ex: 01, A1, JOAO" autocomplete="off" '+
         'style="width:100%;padding:14px;border:2.5px solid var(--y);border-radius:10px;font-size:22px;font-weight:700;font-family:monospace;text-align:center;letter-spacing:3px;margin-bottom:16px;box-sizing:border-box" '+
         'onkeydown="if(event.key===\'Enter\')_confirmarIdColetorAvulsa()"/>'+
       '<button onclick="_confirmarIdColetorAvulsa()" style="width:100%;padding:14px;background:var(--y);color:#111;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Começar →</button>'+
@@ -5167,11 +5172,11 @@ function renderColetaAvulsa() {
     setTimeout(function(){ var el=document.getElementById('avulsa-coletor-id'); if(el){el.focus();el.select();} },100);
     return;
   }
-  var optsInv=invs.map(function(i){ return '<option value="'+i.id+'"'+(i.id===_avulsaInvId?' selected':'')+'>'+i.nome+'</option>'; }).join('');
+  var optsInv=invs.map(function(i){ return '<option value="'+i.id+'"'+(i.id===_avulsaInvId?' selected':'')+'>'+esc(i.nome)+'</option>'; }).join('');
   if (!_avulsaInvId) _avulsaInvId=invs[0].id;
   var coletorChip='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:9px 14px;background:#fff8e1;border:1.5px solid #f5c518;border-radius:10px">'+
     '<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#b38600">Coletor</span>'+
-    '<span style="font-size:17px;font-weight:800;font-family:monospace;flex:1;letter-spacing:2px">'+coletorId+'</span>'+
+    '<span style="font-size:17px;font-weight:800;font-family:monospace;flex:1;letter-spacing:2px">'+esc(coletorId)+'</span>'+
     '<button onclick="_editarIdColetor()" style="padding:4px 10px;background:#fff;border:1.5px solid #ddd;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--t2)">✎ Mudar</button>'+
   '</div>';
   wrap.innerHTML=coletorChip+
@@ -5265,7 +5270,7 @@ function _carregarAvulsaLista() {
       var rows=snap.docs.map(function(d){
         var b=d.data();
         var ts=b.ts&&b.ts.seconds?new Date(b.ts.seconds*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—';
-        return '<tr><td style="font-family:monospace;font-size:12px">'+b.ean+'</td><td style="text-align:right;font-weight:700">'+b.qty+'</td><td style="font-size:11px;color:var(--t3)">'+ts+'</td><td style="font-size:11px;color:var(--t3)">'+b.coletorId+'</td></tr>';
+        return '<tr><td style="font-family:monospace;font-size:12px">'+esc(b.ean)+'</td><td style="text-align:right;font-weight:700">'+b.qty+'</td><td style="font-size:11px;color:var(--t3)">'+ts+'</td><td style="font-size:11px;color:var(--t3)">'+esc(b.coletorId)+'</td></tr>';
       }).join('');
       wrap.innerHTML='<div style="overflow-x:auto"><table><thead><tr><th>EAN</th><th style="text-align:right">Qtd</th><th>Hora</th><th>Coletor</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
     }).catch(function(e){ console.error('Coleta avulsa: consulta falhou (verifique o índice composto em firestore.indexes.json)', e); });
