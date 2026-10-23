@@ -22,3 +22,9 @@ Formato: **[status]** descrição — causa — correção. Status: ABERTO / COR
 - [ ] Bipar em Coleta Avulsa
 - [ ] Encerrar inventário
 - [ ] Exportar
+
+## 2026-10-22 — rodada de melhorias (só Kontar, FC360 intocado)
+
+5. **[FEITO]** Testes automatizados do núcleo `lib/inv-bip-core.js` (`npm test`, 43 casos, node --test sem dependências). Provado que pegam quebra: regra do UPC-A sabotada de propósito → 1 falha; restaurado → 43 ok.
+
+6. **[OBSERVAÇÃO — sem mudança]** "Bipagem não enviada sem aviso" NÃO procede: `_gravarBipagemLocal` já conta pendentes (`_offlinePending`), mostra faixa "⏳ Sincronizando N bipagem(ns)" / "📡 Sem internet · N aguardando envio" e, em falha, toca som de erro + toast "❌ Falha ao gravar EAN". Correções (`aplicarCorrecaoBipagem`) mostram o erro no próprio modal. Os 29 `catch` vazios restantes são localStorage/câmera/signOut, log de auditoria, liberação de endereço na fila e `coletoresReg` — todos reenviados pelo Firestore offline quando a rede volta (só falhariam por permissão, que as regras atuais não negam). Decisão: não mexer.
