@@ -28,6 +28,14 @@ python3 -m http.server 8080
 
 Abra `http://localhost:8080`. O app precisa de internet na primeira carga (Firebase e bibliotecas vêm de CDN: jsQR, ZXing, SheetJS, Google Fonts).
 
+## Testes
+
+```bash
+npm test
+```
+
+Cobre `lib/inv-bip-core.js` (normalização de EAN, catálogo, resolução de código, blocos, parser do TXT, mapeamento de colunas, detector de rajada e resultado do balanço) com `node --test`, sem dependências. Rodar antes de publicar.
+
 ## Configurar o Firebase (projeto novo)
 
 1. Em <https://console.firebase.google.com> crie um projeto (ex.: `kontar-prod`).
