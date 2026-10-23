@@ -5,6 +5,6 @@
   "description": "Kontar — Inventário para mercados e farmácias (PWA, Firebase)",
   "scripts": {
     "serve": "npx serve -l 8080 .",
-    "test": "node --test test/"
+    "test": "node --test"
   }
 }
