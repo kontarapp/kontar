@@ -272,3 +272,21 @@ test('resultado: totais de venda contada e sistema', function () {
   assert.equal(res.totais.sistemaVal, 10 * 2 + 5 * 4 + 8 * 1);
   assert.equal(res.totais.contadoVal, 20);
 });
+
+// ── Regressão: catálogo reenviado depois das bipagens ────────────────────
+// A bipagem guarda `codigo` resolvido na hora do bip. Se o catálogo for reenviado
+// com outro mapeamento, esse código pode não existir mais em porCodigo, mas o
+// produto continua identificável pelo EAN (ou o próprio código gravado É o EAN).
+test('resultado: bip com codigo que virou EAN no catálogo reenviado casa com o produto', function () {
+  var cat = Core.criarCatalogo([{ c: '', e: '7891000100103', d: 'ARROZ 5KG', u: 'CX', q: 20, k: 10, v: 15 }]);
+  var res = Core.calcularResultado(cat, [{ codigo: '7891000100103', ean: '7891000100103', qty: 20, endereco: '1' }]);
+  assert.equal(res.totais.naoCadastrados, 0);
+  var l = res.linhas.find(function (x) { return x.desc === 'ARROZ 5KG'; });
+  assert.equal(l.contado, 20);
+});
+test('resultado: bip com codigo interno antigo e EAN válido casa pelo EAN', function () {
+  var cat = Core.criarCatalogo([{ c: '', e: '7891095100066', d: 'ACUCAR 5KG', u: 'FD', q: 50, k: 5, v: 8 }]);
+  var res = Core.calcularResultado(cat, [{ codigo: '1003', ean: '7891095100066', qty: 50, endereco: '2' }]);
+  assert.equal(res.totais.naoCadastrados, 0);
+  assert.equal(res.linhas.find(function (x) { return x.desc === 'ACUCAR 5KG'; }).contado, 50);
+});

@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '2';
+var BUILD = '3';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -1718,8 +1718,13 @@ function renderResumoBipagens(recarregar){
       var hasCat=!!(cat&&cat.total), grupos={};
       bips.forEach(function(b){
         var it=null, key;
-        if (b.codigo){ key='c:'+b.codigo; it=hasCat?(cat.porCodigo[b.codigo]||null):null; }
-        else { var r=hasCat?InvCore.resolverCodigo(cat,b.ean):null; if(r&&!r.multiplos&&r.codigo){ key='c:'+r.codigo; it=cat.porCodigo[r.codigo]||null; } else { key='e:'+InvCore.normEan(b.ean); } }
+        if (b.codigo&&hasCat&&cat.porCodigo[b.codigo]){ key='c:'+b.codigo; it=cat.porCodigo[b.codigo]; }
+        else {
+          // Catálogo reenviado depois do bip: o código gravado pode não existir mais — resolve pelo código e depois pelo EAN (mesma regra do núcleo)
+          var r=hasCat?((b.codigo?InvCore.resolverCodigo(cat,b.codigo):null)||InvCore.resolverCodigo(cat,b.ean)):null;
+          if(r&&!r.multiplos){ it=r.codigo?(cat.porCodigo[r.codigo]||null):null; if(!it){ var le=cat.porEan[InvCore.normEan(r.ean)]; it=(le&&le.length===1)?le[0]:null; } key=r.codigo?'c:'+r.codigo:'e:'+InvCore.normEan(r.ean); }
+          else { key=b.codigo?'c:'+b.codigo:'e:'+InvCore.normEan(b.ean); }
+        }
         var g=grupos[key];
         if(!g){ g=grupos[key]={key:key,codigo:it?it.c:(b.codigo||''),ean:it?it.e:(b.codigo?'':b.ean),desc:it?it.d:'(não cadastrado)',un:it?it.u:'',custo:(it&&it.k!=null)?Number(it.k):null,venda:(it&&it.v!=null)?Number(it.v):null,nc:!it&&hasCat,qty:0,bips:0,corr:0,ends:{},endsBips:{},endsCols:{},cols:{}}; }
         var q=Number(b.qty)||0; g.qty+=q;
