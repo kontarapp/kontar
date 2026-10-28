@@ -36,6 +36,10 @@ npm test
 
 Cobre `lib/inv-bip-core.js` (normalização de EAN, catálogo, resolução de código, blocos, parser do TXT, mapeamento de colunas, detector de rajada e resultado do balanço) com `node --test`, sem dependências. Rodar antes de publicar.
 
+## Teste de carga
+
+`teste-carga.html` (mesma página usada no FC360): entre com um usuário do projeto de teste, crie um inventário "CARGA" com catálogo de 45.000 itens e rode N coletores simulados gravando bipagens pelo mesmo caminho do app (set sem esperar o servidor). Mostra enviadas/confirmadas/erros, latência média e p95, bip/s, e confere a contagem no servidor. O botão **Limpar tudo** apaga o inventário de carga e seus dados. Nunca rodar no projeto de um cliente.
+
 ## Configurar o Firebase (projeto novo)
 
 1. Em <https://console.firebase.google.com> crie um projeto (ex.: `kontar-prod`).
