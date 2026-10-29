@@ -1,12 +1,12 @@
 {
   "name": "kontar-api",
   "private": true,
-  "engines": { "node": "20" },
+  "engines": { "node": "22" },
   "main": "index.js",
   "scripts": {
     "prebuild": "node scripts/copiar-core.js",
     "test": "npm run prebuild && node --test",
-    "deploy": "npm run prebuild && firebase deploy --only functions --project kontar-e2650"
+    "deploy": "npm run prebuild && firebase deploy --only functions --project kontar-e2650 --force"
   },
   "dependencies": {
     "express": "^4.19.2",
