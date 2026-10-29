@@ -4,3 +4,5 @@ firebase-service-account.json
 *.log
 .firebase/
 testes/
+.superpowers/
+functions/node_modules

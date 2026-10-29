@@ -1,0 +1,5 @@
+{
+  "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
+  "functions": [{ "source": "functions", "codebase": "api", "runtime": "nodejs20",
+    "predeploy": ["npm --prefix functions run prebuild"] }]
+}
