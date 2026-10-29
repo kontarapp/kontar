@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '3';
+var BUILD = '4';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -61,7 +61,7 @@ db.enablePersistence({synchronizeTabs: true}).catch(function(err){
     el.innerHTML =
       '<div style="background:#fff;border-radius:20px;padding:32px 28px;max-width:400px;width:100%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.4)">' +
         '<div style="font-size:48px;margin-bottom:12px">🚫</div>' +
-        '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:20px;font-weight:800;margin-bottom:8px;color:#c0392b">' + titulo + '</div>' +
+        '<div style="font-size:20px;font-weight:800;margin-bottom:8px;color:#c0392b">' + titulo + '</div>' +
         '<div style="font-size:14px;color:#555;line-height:1.6;margin-bottom:20px">' +
           explicacao +
           '<br><br><span style="font-size:12px;color:#888">Motivo técnico: ' + motivo + '</span>' +
@@ -154,7 +154,7 @@ function _swBanner() {
   if (document.getElementById('sw-banner')) return;
   var b = document.createElement('div');
   b.id = 'sw-banner';
-  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#F97316;color:#fff;text-align:center;padding:11px 16px;font-size:14px;font-weight:700;font-family:"Space Grotesk",sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.2)';
+  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1a7a4a;color:#fff;text-align:center;padding:11px 16px;font-size:14px;font-weight:700;font-family:"Manrope",sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.2)';
   b.textContent = '🔄 Nova versão disponível — atualizando...';
   document.body.appendChild(b);
 }
@@ -1137,7 +1137,7 @@ function _htmlEnderecosRecontar(r) {
     var btn=isAberto&&slot.concluido?'<button class="btn btn-s btn-sm" style="color:var(--r);border-color:var(--r)" onclick="reabrirEndereco(\''+_invAtivo.id+'\',\''+safe+'\')">↩ Reabrir pra recontar</button>':(slot.concluido?'':'<span style="font-size:11px;color:var(--t3)">em aberto</span>');
     return '<tr><td style="font-family:monospace;font-weight:700">'+e.endereco+'</td><td style="font-size:12px">'+(_slotNomes(slot,', ')||'—')+'</td><td style="text-align:right">'+e.itensDivergentes+'</td><td style="text-align:right">'+(+e.unidades.toFixed(1)).toLocaleString('pt-BR')+'</td><td style="text-align:right;font-weight:700">'+_fmtBRL(e.score)+'</td><td>'+btn+'</td></tr>';
   }).join('');
-  return '<div style="margin-top:18px;font-family:\'Space Grotesk\',sans-serif;font-size:14px;font-weight:700;margin-bottom:4px">Endereços pra recontar (estimativa)</div>'+
+  return '<div style="margin-top:18px;font-size:14px;font-weight:700;margin-bottom:4px">Endereços pra recontar (estimativa)</div>'+
     '<div style="font-size:11px;color:var(--t3);margin-bottom:8px">A divergência de cada produto é distribuída entre os endereços onde ele foi bipado, na proporção do que foi contado em cada um. Quanto maior o valor, mais vale recontar.</div>'+
     '<div style="overflow-x:auto"><table><thead><tr><th>Endereço</th><th>Coletor</th><th style="text-align:right">Itens diverg.</th><th style="text-align:right">Unid. estim.</th><th style="text-align:right">Impacto</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
@@ -1149,7 +1149,7 @@ function _imprimirTabelaA4(titulo, sub, resumo, cols, rows, frameId) {
   var thead='<tr>'+cols.map(function(c){ return '<th'+(c.r?' class="r"':'')+'>'+esc(c.t)+'</th>'; }).join('')+'</tr>';
   var tbody=rows.map(function(r){ return '<tr>'+r.map(function(v,i){ return '<td class="'+(cols[i].r?'r ':'')+(cols[i].m?'m':'')+'">'+v+'</td>'; }).join('')+'</tr>'; }).join('');
   var tiles=(resumo||[]).map(function(x){ return '<div class="tile"><div class="lbl">'+esc(x[0])+'</div><div class="val">'+esc(x[1])+'</div></div>'; }).join('');
-  var css='@page{size:A4 landscape;margin:10mm}body{font-family:"Space Grotesk",system-ui,sans-serif;color:#111;margin:0;font-size:10px}'+
+  var css='@page{size:A4 landscape;margin:10mm}body{font-family:"Manrope",system-ui,sans-serif;color:#111;margin:0;font-size:10px}'+
     'header{display:flex;align-items:center;gap:14px;border-bottom:3px solid #F97316;padding-bottom:8px;margin-bottom:8px}header img{height:40px}header .t{flex:1}.h1{font-size:18px;font-weight:800}.h2{font-size:11px;color:#555}'+
     '.tiles{display:flex;gap:8px;margin-bottom:10px}.tile{flex:1;background:#f5f5f5;border-radius:8px;padding:6px 10px}.tile .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#777}.tile .val{font-size:15px;font-weight:800}'+
     'table{width:100%;border-collapse:collapse}th{background:#ffe7d6;font-size:9px;text-transform:uppercase;letter-spacing:.4px;text-align:left;padding:4px;border-bottom:1.5px solid #f3b184}th.r{text-align:right}'+
@@ -1280,7 +1280,7 @@ function imprimirFolhaConferencia() {
         '<footer><div class="ass"><div class="linha"></div>Conferente</div><div class="ass"><div class="linha"></div>Responsável</div><div class="obs"><b>Obs.:</b></div></footer>'+
       '</section>';
     }).join('');
-    var css='@page{size:A4;margin:12mm}*{box-sizing:border-box}body{margin:0;font-family:"Space Grotesk",Arial,sans-serif;color:#111;font-size:11px}'+
+    var css='@page{size:A4;margin:12mm}*{box-sizing:border-box}body{margin:0;font-family:"Manrope",Arial,sans-serif;color:#111;font-size:11px}'+
       '.folha{page-break-after:always}.folha:last-child{page-break-after:auto}'+
       'header{display:flex;align-items:center;gap:14px;border-bottom:3px solid #F97316;padding-bottom:8px;margin-bottom:8px}header img{height:40px}header .t{flex:1}.h1{font-size:18px;font-weight:800}.h2{font-size:12px;color:#555}'+
       '.end{text-align:right}.end .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:#777}.end .num{font-size:30px;font-weight:800;font-family:monospace}'+
@@ -1401,9 +1401,7 @@ function abrirDetalheInv(invId, tabInicial) {
   document.getElementById('inv-detalhe-nome').textContent = _invAtivo.nome;
   var statusEl = document.getElementById('inv-detalhe-status');
   var isAberto = _invAtivo.status==='aberto';
-  statusEl.textContent = isAberto ? 'ABERTO' : 'ENCERRADO';
-  statusEl.style.background = isAberto ? '#d1f0e0' : '#f0f0f0';
-  statusEl.style.color = isAberto ? '#1a5c34' : '#666';
+  _setStatusEl(statusEl, isAberto ? 'Aberto' : 'Encerrado', isAberto ? 'ok' : 'mute');
   // Reset bipagens filter
   var filter = document.getElementById('inv-bip-filter');
   if (filter) { filter.innerHTML=''; filter.removeAttribute('data-built'); }
@@ -1456,14 +1454,10 @@ function _renderImportCatStatus(invId, forceReload) {
   loadCatalogoByInv(invId,function(cat){
     var n=cat.total; var comEan=Object.keys(cat.porEan).length;
     if (n>0) {
-      var reenviarBtn=isAberto?'<button class="btn btn-s btn-sm" onclick="abrirImportCat()">↩ Reenviar arquivo</button>':'';
-      wrap.innerHTML=
-        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
-          '<span style="padding:4px 12px;background:#e8f5ee;border:1.5px solid #c8e6c9;border-radius:8px;font-size:12px;font-weight:700;color:#1a5c34">✓ Catálogo: '+n+' produtos · '+comEan+' com EAN</span>'+
-          reenviarBtn+
-        '</div>';
+      var reenviarBtn=isAberto?'<button class="btn btn-s" onclick="abrirImportCat()">Reenviar catálogo</button>':'';
+      wrap.innerHTML=reenviarBtn+'<span class="cnt">Catálogo: <span class="num">'+n.toLocaleString('pt-BR')+'</span> produtos · <span class="num">'+comEan.toLocaleString('pt-BR')+'</span> com EAN</span>';
     } else {
-      wrap.innerHTML=isAberto?'<button class="btn btn-s btn-sm" onclick="abrirImportCat()">📥 Importar Catálogo TXT</button>':'';
+      wrap.innerHTML=isAberto?'<button class="btn btn-p" onclick="abrirImportCat()">Importar catálogo TXT</button>':'<span class="cnt">Sem catálogo</span>';
     }
   });
 }
@@ -1551,7 +1545,7 @@ function encerrarInventario(invId) {
       '<div id="modal-encerrar-inv" onclick="if(event.target===this)fecharModalEncerrarInv()" '+
         'style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto">'+
         '<div style="background:#fff;border-radius:16px;padding:28px 24px 24px;width:100%;max-width:440px;box-shadow:0 8px 40px rgba(0,0,0,.22)">'+
-          '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:18px;font-weight:800;margin-bottom:6px;color:#c0392b">⚠ Encerrar Inventário</div>'+
+          '<div style="font-size:18px;font-weight:800;margin-bottom:6px;color:#c0392b">⚠ Encerrar Inventário</div>'+
           '<div style="font-size:15px;font-weight:700;margin-bottom:14px;padding:10px 14px;background:#fdecea;border-radius:10px;color:#c0392b">'+nomeInv+'</div>'+
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'+
             '<div style="background:var(--gray);border-radius:10px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800">'+enderecos.length+'</div><div style="font-size:11px;color:var(--t3)">Endereços</div></div>'+
@@ -1608,7 +1602,7 @@ function _confirmarEncerrarInv(invId) {
         if (_invAtivo && _invAtivo.id===invId) {
           _invAtivo.status='encerrado';
           var statusEl=document.getElementById('inv-detalhe-status');
-          if(statusEl){ statusEl.textContent='ENCERRADO'; statusEl.style.background='#f0f0f0'; statusEl.style.color='#666'; }
+          _setStatusEl(statusEl, 'Encerrado', 'mute');
           var actEl=document.getElementById('inv-end-actions');
           if(actEl) actEl.style.display='none';
           var corrBtn=document.getElementById('bip-btn-correcao');
@@ -1896,7 +1890,7 @@ function renderCorrecaoBipagem() {
   _corrEanCache=null;
   wrap.innerHTML=
     '<div class="card" style="max-width:480px">'+
-      '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:15px;font-weight:800;margin-bottom:4px">Correção de Bipagem</div>'+
+      '<div style="font-size:15px;font-weight:800;margin-bottom:4px">Correção de Bipagem</div>'+
       '<div style="font-size:13px;color:var(--t2);margin-bottom:18px">Busque um EAN e informe a correção (negativo para reduzir, positivo para adicionar).</div>'+
       '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);display:block;margin-bottom:6px">EAN / Código de Barras</label>'+
       '<div style="display:flex;gap:8px;margin-bottom:14px">'+
@@ -2464,7 +2458,7 @@ function _abrirModalExportErp(perfil) {
   var html =
     '<div id="modal-erp-export" onclick="if(event.target===this)_fecharModalExportErp()" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto">'+
     '<div style="background:#fff;border-radius:18px;padding:28px 24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.25)">'+
-      '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:18px;font-weight:800;margin-bottom:4px">Exportar para ERP</div>'+
+      '<div style="font-size:18px;font-weight:800;margin-bottom:4px">Exportar para ERP</div>'+
       '<div style="font-size:13px;color:var(--t3);margin-bottom:18px">Configure o formato e baixe o arquivo. O perfil é salvo automaticamente.</div>'+
 
       '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);display:block;margin-bottom:6px">Preset de ERP</label>'+
@@ -2830,12 +2824,18 @@ function criarInventario() {
 
 // ── Helper: badge de tipo de inventário ───────────────────────────────────
 function _invTipoTag(tipo) {
-  if (tipo==='parcial') return '<span style="display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#fff3e0;color:#e65100;margin-right:5px">PARCIAL</span>';
-  if (tipo==='surpresa') return '<span style="display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#ede9fe;color:#5b21b6;margin-right:5px">SURPRESA</span>';
-  return '<span style="display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#f0f0f0;color:#444;margin-right:5px">GERAL</span>';
+  if (tipo==='parcial') return _tg('Parcial','am');
+  if (tipo==='surpresa') return _tg('Surpresa','au');
+  return _tg('Geral');
 }
 
 // ── Override renderInvList — só ativos, badge FILA ────────────────────────
+
+// ── UI Ardósia: etiquetas e status (ver docs/superpowers/specs/2026-10-28-kontar-ardosia-design.md) ──
+function _tg(txt, cls) { return '<span class="tg'+(cls?' tg-'+cls:'')+'">'+txt+'</span>'; }
+function _stx(txt, cls) { return '<span class="st st-'+(cls||'mute')+'">'+txt+'</span>'; }
+var _modoTag = { fila:_tg('Fila'), auditoria:_tg('Auditoria','au'), colab:_tg('Colab.','am') };
+function _setStatusEl(el, txt, cls) { if(!el) return; el.textContent=txt; el.className='st st-'+cls+(el.id==='inv-detalhe-status'?' st-up':''); el.style.background=''; el.style.color=''; }
 var _invBipCount = {};
 // Conta bipagens sem baixar os docs. O SDK compat 10.12 não expõe count(), então usa a
 // API REST de agregação com o token do próprio usuário (mesmas regras de segurança).
@@ -2871,29 +2871,30 @@ function renderInvList() {
   if (!wrap) return;
   var invs = (S.invsCache||[]).filter(function(i){ return i.status==='aberto'; });
   if (!invs.length) {
-    wrap.innerHTML = '<div style="text-align:center;padding:50px 20px;color:var(--t3)"><div style="font-size:40px;margin-bottom:12px">📦</div><div style="font-size:15px;font-weight:600;margin-bottom:6px">Nenhum inventário ativo</div><div style="font-size:13px">Clique em <strong>+ Novo Inventário</strong> para começar.</div></div>';
+    wrap.innerHTML = '<div class="empty"><b>Nenhum inventário ativo</b>Clique em <strong>+ Novo inventário</strong> para começar.</div>';
     atualizarNavColeta(); return;
   }
-  wrap.innerHTML = invs.map(function(inv){
+  var rows = invs.map(function(inv){
     var endCount=(inv.enderecos||[]).length;
     var dataStr=inv.criadoEm?new Date(inv.criadoEm.seconds*1000).toLocaleDateString('pt-BR'):'--';
-    var filaTag=(inv.modoFila?'<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:#e8f4ff;color:#1a5c9c;margin-left:6px;vertical-align:middle">FILA</span>':'')+(inv.sequencial?'<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:#fff8e1;color:#b38600;margin-left:6px;vertical-align:middle">SEQUENCIAL</span>':'');
+    var modoTags=(inv.modoFila?_tg('Fila'):'')+(inv.sequencial?_tg('Sequencial'):'');
     var tipoTag=_invTipoTag(inv.tipo);
-    return '<div class="card" style="margin-bottom:12px">'+
-      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
-        '<div>'+
-          '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:15px;font-weight:700">'+esc(inv.nome)+filaTag+'</div>'+
-          '<div style="font-size:12px;color:var(--t3);margin-top:3px">'+tipoTag+'Criado '+dataStr+' · '+endCount+' endereços · '+'<span id="invcnt-'+inv.id+'">…</span> bipagens</div>'+
-        '</div>'+
-        '<span style="white-space:nowrap;padding:4px 14px;border-radius:20px;font-size:11px;font-weight:700;background:#d1f0e0;color:#1a5c34">ABERTO</span>'+
-      '</div>'+
-      '<div style="display:flex;gap:8px;margin-top:12px">'+
-        '<button class="btn btn-p btn-sm" onclick="abrirDetalheInv(\''+inv.id+'\')">Ver Detalhes</button>'+
-        '<button class="btn btn-sm" style="color:var(--r);border:1.5px solid var(--r);background:#fff;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit" onclick="encerrarInventario(\''+inv.id+'\')">Encerrar</button>'+
-        '<button class="btn btn-sm" style="background:var(--r);color:#fff;border:1.5px solid var(--r);padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit" onclick="abrirModalExcluirInv(\''+inv.id+'\')">🗑 Excluir</button>'+
-      '</div>'+
-    '</div>';
+    var endLbl=inv.modoOrganizacao==='setores'?'setores':'endereços';
+    return '<tr>'+
+      '<td><strong>'+esc(inv.nome)+'</strong><div style="font-size:12px;color:var(--t3)">'+tipoTag+'</div></td>'+
+      '<td>'+(modoTags||'<span style="color:var(--t4)">—</span>')+'</td>'+
+      '<td class="num">'+dataStr+'</td>'+
+      '<td class="r num">'+endCount+'<span style="color:var(--t3);font-family:var(--sans)"> '+endLbl+'</span></td>'+
+      '<td class="r num" id="invcnt-'+inv.id+'">…</td>'+
+      '<td>'+_stx('Aberto','ok')+'</td>'+
+      '<td class="r" style="white-space:nowrap">'+
+        '<button class="lk" onclick="abrirDetalheInv(\''+inv.id+'\')">Abrir</button>&nbsp;&nbsp;&nbsp;'+
+        '<button class="lk" onclick="encerrarInventario(\''+inv.id+'\')">Encerrar</button>&nbsp;&nbsp;&nbsp;'+
+        '<button class="lk lk-d" onclick="abrirModalExcluirInv(\''+inv.id+'\')">Excluir</button>'+
+      '</td>'+
+    '</tr>';
   }).join('');
+  wrap.innerHTML = '<div class="tbl"><table><thead><tr><th>Nome</th><th>Modo</th><th>Criado</th><th class="r">Endereços</th><th class="r">Bipagens</th><th>Status</th><th class="r">Ações</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
   _preencherContagens();
   atualizarNavColeta();
 }
@@ -2960,7 +2961,7 @@ function _histRenderLista() {
     return '<div class="card" style="margin-bottom:12px">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'+
         '<div>'+
-          '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:15px;font-weight:700">'+esc(inv.nome)+'</div>'+
+          '<div style="font-size:15px;font-weight:700">'+esc(inv.nome)+'</div>'+
           '<div style="font-size:12px;color:var(--t3);margin-top:3px">'+tipoTag+'Encerrado '+dt+' · '+ends+' endereços · '+'<span id="invcnt-'+inv.id+'">…</span> bipagens</div>'+
         '</div>'+
         '<span style="padding:4px 14px;border-radius:20px;font-size:11px;font-weight:700;background:#f0f0f0;color:#666">ENCERRADO</span>'+
@@ -2990,7 +2991,7 @@ function renderInvComparativo() {
     return '<option value="'+inv.id+'">'+esc(inv.nome)+' ('+(inv.status==='aberto'?'ativo':'encerrado')+')</option>';
   }).join('');
   el.innerHTML='<div class="card" style="margin-bottom:14px">'+
-    '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:15px;font-weight:700;margin-bottom:12px">Comparativo por Endereço + EAN</div>'+
+    '<div style="font-size:15px;font-weight:700;margin-bottom:12px">Comparativo por Endereço + EAN</div>'+
     '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:4px">'+
       '<div style="flex:1;min-width:180px"><label style="font-size:11px;font-weight:700;color:var(--t2);display:block;margin-bottom:4px">Inventário A</label><select id="cmp-inv-a" style="'+ss+'">'+opts+'</select></div>'+
       '<div style="flex:1;min-width:180px"><label style="font-size:11px;font-weight:700;color:var(--t2);display:block;margin-bottom:4px">Inventário B</label><select id="cmp-inv-b" style="'+ss+'">'+opts+'</select></div>'+
@@ -3088,17 +3089,17 @@ function _renderSelecaoEndereco(inv, bipCount) {
       var icon=_sico[s]||'📁';
       var slot=filaMap[s];
       if(slot&&slot.concluido){
-        return '<button disabled style="padding:20px 6px;border:2.5px solid #ccc;border-radius:14px;background:#f0f0f0;color:#999;font-size:14px;font-weight:800;font-family:\'Space Grotesk\',sans-serif;cursor:not-allowed;width:100%;box-sizing:border-box;line-height:1.4;opacity:.65">🔒<br>'+esc(s)+'<br><span style="font-size:10px;font-weight:600">encerrado</span></button>';
+        return '<button disabled style="padding:20px 6px;border:2.5px solid #ccc;border-radius:14px;background:#f0f0f0;color:#999;font-size:14px;font-weight:800;cursor:not-allowed;width:100%;box-sizing:border-box;line-height:1.4;opacity:.65">🔒<br>'+esc(s)+'<br><span style="font-size:10px;font-weight:600">encerrado</span></button>';
       }
       var andamento=slot&&!slot.concluido;
       var border=andamento?'border:2.5px solid #b38600':'border:2.5px solid '+c[0];
       var bg=andamento?'background:#fffbe8':'background:'+c[1];
       var cl=andamento?'color:#b38600':'color:'+c[2];
       var ss=s.replace(/'/g,"\\'");
-      return '<button onclick="_confirmarSetorFila(\''+safeInvId+'\',\''+ss+'\',\''+ss+'\')" style="padding:20px 6px;'+border+';border-radius:14px;'+bg+';'+cl+';font-size:14px;font-weight:800;font-family:\'Space Grotesk\',sans-serif;cursor:pointer;width:100%;box-sizing:border-box;word-break:break-word;line-height:1.4">'+icon+'<br>'+esc(s)+(andamento?'<br><span style="font-size:10px;font-weight:600">em andamento</span>':'')+'</button>';
+      return '<button onclick="_confirmarSetorFila(\''+safeInvId+'\',\''+ss+'\',\''+ss+'\')" style="padding:20px 6px;'+border+';border-radius:14px;'+bg+';'+cl+';font-size:14px;font-weight:800;cursor:pointer;width:100%;box-sizing:border-box;word-break:break-word;line-height:1.4">'+icon+'<br>'+esc(s)+(andamento?'<br><span style="font-size:10px;font-weight:600">em andamento</span>':'')+'</button>';
     }).join('');
     return '<div>'+
-      '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px">Selecionar Setor</div>'+
+      '<div style="font-size:16px;font-weight:700;margin-bottom:6px">Selecionar Setor</div>'+
       '<div style="font-size:13px;color:var(--t3);margin-bottom:16px">Toque no setor que você vai coletar.</div>'+
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:12px">'+btns+'</div>'+
     '</div>';
@@ -3132,7 +3133,7 @@ function _renderSelecaoEndereco(inv, bipCount) {
       '<span style="font-weight:700;font-family:monospace;font-size:14px">'+esc(e)+'</span>'+quem+'</div>';
   }).join('');
   return '<div>'+
-    '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px">Selecionar Endereço</div>'+
+    '<div style="font-size:16px;font-weight:700;margin-bottom:4px">Selecionar Endereço</div>'+
     '<div style="font-size:13px;color:var(--t3);margin-bottom:14px">Scanner físico: aponte e leia diretamente. Câmera: toque em 📷.</div>'+
     '<div style="display:flex;gap:8px;margin-bottom:10px">'+
       '<input id="fila-end-input" type="text" placeholder="Aguardando scanner..." autocomplete="off" autocorrect="off" autocapitalize="characters" inputmode="text" style="flex:1;padding:10px 14px;border:2px solid var(--y);border-radius:9px;font-size:15px;font-family:monospace;text-transform:uppercase" onkeydown="if(event.key===\'Enter\'||event.key===\'Tab\'){event.preventDefault();selecionarEnderecoFila(\''+inv.id+'\',document.getElementById(\'fila-end-input\').value.trim());}" onblur="setTimeout(function(){var m=document.getElementById(\'modal-setor-picker\');var qs=document.getElementById(\'qr-scan-wrap\');if(!m&&(!qs||qs.style.display===\'none\')){var e=document.getElementById(\'fila-end-input\');if(e)e.focus();}},120)"/>'+
@@ -3194,7 +3195,7 @@ function _mostrarSetorPicker(invId, endereco) {
   var html=
     '<div id="modal-setor-picker" onclick="if(event.target===this)_fecharSetorPicker()" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2100;display:flex;align-items:flex-end;justify-content:center;padding:0">'+
       '<div style="background:#fff;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-shadow:0 -4px 32px rgba(0,0,0,.18)">'+
-        '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:17px;font-weight:800;margin-bottom:4px">Selecionar Setor</div>'+
+        '<div style="font-size:17px;font-weight:800;margin-bottom:4px">Selecionar Setor</div>'+
         '<div style="font-size:13px;color:var(--t3);margin-bottom:20px">Endereço: <strong style="font-family:monospace">'+esc(endereco)+'</strong></div>'+
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;margin-bottom:14px" id="setor-picker-btns"></div>'+
         '<button onclick="_fecharSetorPicker()" style="width:100%;padding:11px;border:1.5px solid var(--gray2);border-radius:10px;background:#fff;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;color:var(--t2)">Cancelar</button>'+
@@ -3212,7 +3213,7 @@ function _mostrarSetorPicker(invId, endereco) {
       var c=(_setorColors[i%_setorColors.length]).split('|');
       var icon=_setorIcons[s]||'📁';
       var ss=s.replace(/'/g,"\\'");
-      return '<button onclick="_confirmarSetorFila(\''+safeInvId+'\',\''+safeEnd+'\',\''+ss+'\')" style="padding:14px 6px;border:2.5px solid '+c[0]+';border-radius:12px;background:'+c[1]+';color:'+c[2]+';font-size:13px;font-weight:800;font-family:\'Space Grotesk\',sans-serif;cursor:pointer;width:100%;box-sizing:border-box;word-break:break-word;line-height:1.3">'+icon+'<br>'+esc(s)+'</button>';
+      return '<button onclick="_confirmarSetorFila(\''+safeInvId+'\',\''+safeEnd+'\',\''+ss+'\')" style="padding:14px 6px;border:2.5px solid '+c[0]+';border-radius:12px;background:'+c[1]+';color:'+c[2]+';font-size:13px;font-weight:800;cursor:pointer;width:100%;box-sizing:border-box;word-break:break-word;line-height:1.3">'+icon+'<br>'+esc(s)+'</button>';
     }).join('');
   }
 }
@@ -3601,7 +3602,7 @@ function _htmlIdColetorForm() {
   var atual = _getIdColetor();
   var nomeAtual = _getNomeColetor();
   return '<div style="max-width:360px;margin:50px auto;padding:28px 24px;background:#fff;border-radius:16px;border:1px solid var(--gray2);box-shadow:var(--sh)">'+
-    '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:19px;font-weight:800;margin-bottom:6px">Identificação</div>'+
+    '<div style="font-size:19px;font-weight:800;margin-bottom:6px">Identificação</div>'+
     '<div style="font-size:13px;color:var(--t2);margin-bottom:20px">Informe seu ID e nome para começar.</div>'+
     '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);display:block;margin-bottom:8px">ID de Coletor</label>'+
     '<input id="coletor-id-novo" type="text" value="'+esc(atual)+'" placeholder="Ex: 01, A1, C3" autocomplete="off" '+
@@ -3679,7 +3680,7 @@ function renderColeta() {
       // Só o estado do slot (vem no doc do inventário): não baixa as bipagens inteiras.
       wrap.innerHTML='<div>'+
         '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">'+
-          '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:17px;font-weight:700;flex:1">'+esc(fresh.nome)+'</div>'+
+          '<div style="font-size:17px;font-weight:700;flex:1">'+esc(fresh.nome)+'</div>'+
           '<span style="padding:4px 14px;border-radius:20px;font-size:11px;font-weight:700;background:#d1f0e0;color:#1a5c34">ABERTO</span>'+
         '</div>'+
         _renderSelecaoEndereco(fresh, {})+'</div>';
@@ -3758,14 +3759,14 @@ function renderColeta() {
     '<div style="background:#fff;border-radius:14px;border:1px solid var(--gray2);padding:20px;box-shadow:var(--sh);margin-bottom:16px">'+
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">'+
         '<div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--t3)">Endereço</div>'+
-          '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:32px;font-weight:800;color:var(--t)">'+esc(end)+'</div>'+
+          '<div style="font-size:32px;font-weight:800;color:var(--t)">'+esc(end)+'</div>'+
           '<div style="margin-top:4px">'+mb+'</div></div>'+
         '<div style="text-align:right"><div style="font-size:12px;color:var(--t3);max-width:180px">'+esc(inv.nome)+'</div>'+
           '<div id="inv-seq-label" style="font-size:13px;font-weight:700;color:var(--g);margin-top:4px">Seq: —</div></div>'+
       '</div>'+scanHtml+
     '</div>'+
     '<div style="background:#fff;border-radius:14px;border:1px solid var(--gray2);padding:20px;box-shadow:var(--sh)">'+
-      '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:14px;font-weight:700;margin-bottom:12px">Minhas bipagens — Endereço '+esc(end)+(modo==='auditoria'?' (Rodada '+rodada+')':'')+'</div>'+
+      '<div style="font-size:14px;font-weight:700;margin-bottom:12px">Minhas bipagens — Endereço '+esc(end)+(modo==='auditoria'?' (Rodada '+rodada+')':'')+'</div>'+
       '<div id="inv-ultimas-wrap"><div style="text-align:center;padding:24px;color:var(--t3);font-size:13px">Carregando...</div></div>'+
     '</div>';
   if (!concluido) {
@@ -3847,7 +3848,7 @@ function _exibirModalFinalizar(bips) {
     '<div id="modal-finalizar" onclick="if(event.target===this)fecharModalFinalizar()" '+
       'style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center">'+
       '<div style="background:#fff;border-radius:18px 18px 0 0;padding:24px 20px 28px;width:100%;max-width:520px;max-height:82vh;display:flex;flex-direction:column;box-sizing:border-box">'+
-        '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:17px;font-weight:800;margin-bottom:2px">Finalizar Endereço</div>'+
+        '<div style="font-size:17px;font-weight:800;margin-bottom:2px">Finalizar Endereço</div>'+
         '<div style="font-size:26px;font-weight:800;font-family:monospace;letter-spacing:2px;color:var(--t);margin-bottom:4px">'+esc(end)+'</div>'+
         (rodada>1?'<div style="font-size:12px;color:#5b21b6;font-weight:700;margin-bottom:8px">Rodada '+rodada+'</div>':'')+
         '<div style="display:flex;gap:10px;margin-bottom:14px">'+
@@ -4011,17 +4012,17 @@ function renderDashboardRealtime(bips) {
   var etaEl=document.getElementById('dash-inv-eta'); if(etaEl) etaEl.textContent=_calcETA(inv);
   var stEl=document.getElementById('dash-inv-status');
   if(stEl){
-    if(inv.status==='encerrado'){ stEl.textContent='Encerrado'; stEl.style.background='#f0f0f0'; stEl.style.color='#666'; }
-    else { stEl.textContent='🟢 Ao vivo'; stEl.style.background='#d1f0e0'; stEl.style.color='#1a5c34'; }
+    if(inv.status==='encerrado') _setStatusEl(stEl,'Encerrado','mute');
+    else _setStatusEl(stEl,'Ao vivo','ok');
   }
   var sbMap={
-    'pendente':'<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#f0f0f0;color:#666">Pendente</span>',
-    'sem-coletor':'<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#fff3e0;color:#e65100">Sem coletor</span>',
-    'aguardando':'<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#fff8e1;color:#b7770d">Aguardando</span>',
-    'em-andamento':'<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#e8f5ee;color:#1a7a4a">Em andamento</span>',
-    'concluido':'<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#d1f0e0;color:#1a5c34">✓ Concluído</span>',
-    'resolvido':'<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#d1f0e0;color:#1a5c34">✓ Resolvido</span>',
-    'divergente':'<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#fdecea;color:#c0392b">⚠ Divergente</span>'
+    'pendente':_stx('Pendente','mute'),
+    'sem-coletor':_stx('Sem coletor','warn'),
+    'aguardando':_stx('Aguardando','mute'),
+    'em-andamento':_stx('Em andamento','run'),
+    'concluido':_stx('Concluído','ok'),
+    'resolvido':_stx('Resolvido','ok'),
+    'divergente':_stx('Divergente','err')
   };
   // Alerta 100% concluído
   if (endsConcl===enderecos.length&&enderecos.length>0&&inv.status==='aberto'&&!_inv100pctAlerted[inv.id]) {
@@ -4040,19 +4041,16 @@ function renderDashboardRealtime(bips) {
   bips.forEach(function(b){ var t=b.ts&&b.ts.seconds?b.ts.seconds*1000:0; if(t>(ultimaBipEnd[b.endereco]||0)) ultimaBipEnd[b.endereco]=t; });
   var tbody=document.getElementById('dash-inv-tbody'); if(!tbody) return;
   tbody.innerHTML=rows.map(function(r){
-    var mb=r.modo==='auditoria'
-      ?'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#ede9fe;color:#5b21b6">AUDITORIA</span>'
-      :isModoFila?'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#e8f4ff;color:#1a5c9c">FILA</span>'
-      :'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#e8f5ee;color:#1a5c34">COLABR.</span>';
+    var mb=r.modo==='auditoria'?_modoTag.auditoria:isModoFila?_modoTag.fila:_modoTag.colab;
     var divCell=r.divs.length
-      ?'<button class="btn btn-s btn-sm" onclick="verDivergencias(\''+r.end+'\')">'+r.divs.length+' itens</button>'+(r.resSel?'<span style="font-size:11px;font-weight:700;color:var(--g);margin-left:4px">R'+r.resSel.rodada+'✓</span>':'')
-      :'—';
+      ?'<button class="lk" onclick="verDivergencias(\''+r.end+'\')">'+r.divs.length+' itens</button>'+(r.resSel?'<span style="font-size:11px;font-weight:500;color:var(--g);margin-left:6px">R'+r.resSel.rodada+' ✓</span>':'')
+      :'<span style="color:var(--t4)">—</span>';
     var timeoutWarn='';
     if (r.status==='em-andamento'&&ultimaBipEnd[r.end]&&(agora-ultimaBipEnd[r.end])>TIMEOUT_MS) {
       var mins=Math.floor((agora-ultimaBipEnd[r.end])/60000);
-      timeoutWarn='<span title="Sem bipagem há '+mins+' min" style="display:inline-block;padding:1px 6px;border-radius:8px;background:#fdecea;color:#c0392b;font-size:10px;font-weight:700;margin-left:4px">⚠ '+mins+'min</span>';
+      timeoutWarn=' <span title="Sem bipagem há '+mins+' min" class="tg tg-err">'+mins+' min parado</span>';
     }
-    return '<tr><td><strong>'+esc(r.end)+'</strong>'+timeoutWarn+'</td><td>'+mb+'</td><td style="font-size:12px;color:var(--t2)">'+esc(r.colTxt)+'</td><td style="text-align:center;font-weight:700">'+r.total+'</td><td>'+(sbMap[r.status]||r.status)+'</td><td>'+divCell+'</td></tr>';
+    return '<tr><td class="num"><strong>'+esc(r.end)+'</strong>'+timeoutWarn+'</td><td>'+mb+'</td><td style="color:var(--t2)">'+esc(r.colTxt)+'</td><td class="r num">'+r.total+'</td><td>'+(sbMap[r.status]||r.status)+'</td><td class="r">'+divCell+'</td></tr>';
   }).join('');
 }
 
@@ -4344,11 +4342,11 @@ function _limparSubcolecoes(invId) {
 
 // ── Override renderInvEnderecos — suporte a modoFila + status + reabrir ──
 var _sbMapEnd={
-  'pendente':'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:#f0f0f0;color:#666">Pendente</span>',
-  'sem-coletor':'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:#fff3e0;color:#e65100">Sem coletor</span>',
-  'aguardando':'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:#fff8e1;color:#b7770d">Aguardando</span>',
-  'em-andamento':'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:#e8f5ee;color:#1a7a4a">Em andamento</span>',
-  'concluido':'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:#d1f0e0;color:#1a5c34">✓ Concluído</span>'
+  'pendente':_stx('Pendente','mute'),
+  'sem-coletor':_stx('Sem coletor','warn'),
+  'aguardando':_stx('Aguardando','mute'),
+  'em-andamento':_stx('Em andamento','run'),
+  'concluido':_stx('Concluído','ok')
 };
 function renderInvEnderecos() {
   if (!_invAtivo) return;
@@ -4364,40 +4362,38 @@ function renderInvEnderecos() {
     var filaMap=inv.fila||{};
     tbody.innerHTML=enderecos.map(function(end){
       var slot=filaMap[end];
-      var colTxt=slot&&_slotColetores(slot).length?_slotColetores(slot).map(function(c){ return '<div>'+esc(c.nome||c.coletorId||'?')+(c.concluido?' <span style="color:#1a5c34;font-weight:700">✓</span>':'')+'</div>'; }).join(''):'<span style="color:var(--t3)">—</span>';
+      var colTxt=slot&&_slotColetores(slot).length?_slotColetores(slot).map(function(c){ return '<div>'+esc(c.nome||c.coletorId||'?')+(c.concluido?' <span style="color:var(--g)">✓</span>':'')+'</div>'; }).join(''):'<span style="color:var(--t3)">—</span>';
       var status=!slot?'sem-coletor':slot.concluido?'concluido':'aguardando';
       var safeEnd=end.replace(/'/g,"\\'");
-      var reabrirBtn=isAberto&&isAdmin&&slot&&slot.concluido?'<button class="btn btn-s btn-sm" onclick="reabrirEndereco(\''+invId+'\',\''+safeEnd+'\')" style="color:var(--r);border-color:var(--r)">↩ Reabrir</button>':'';
+      var reabrirBtn=isAberto&&isAdmin&&slot&&slot.concluido?'<button class="lk" onclick="reabrirEndereco(\''+invId+'\',\''+safeEnd+'\')">Reabrir</button>':'';
       var endLabel=isModoSet?(_reIco[end]||'📁')+' '+esc(end):'<strong>'+esc(end)+'</strong>';
-      var setorBadge=(!isModoSet&&slot&&slot.setor)?'<br><span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;'+(slot.setor==='ESTOQUE'?'background:#e8f0ff;color:#1a3c9c':'background:#fff8e1;color:#b38600')+'">'+esc(slot.setor)+'</span>':'';
+      var setorBadge=(!isModoSet&&slot&&slot.setor)?' '+_tg(esc(slot.setor),slot.setor==='ESTOQUE'?'info':'am'):'';
       return '<tr>'+
         '<td>'+endLabel+setorBadge+'</td>'+
-        '<td><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#e8f4ff;color:#1a5c9c">FILA</span></td>'+
+        '<td>'+_modoTag.fila+'</td>'+
         '<td id="inv-coltxt-'+end.replace(/[^a-z0-9]/gi,'_')+'" style="font-size:12px">'+colTxt+'</td>'+
-        '<td id="inv-ec-'+end.replace(/[^a-z0-9]/gi,'_')+'">—</td>'+
+        '<td class="r num" id="inv-ec-'+end.replace(/[^a-z0-9]/gi,'_')+'">—</td>'+
         '<td>'+(_sbMapEnd[status]||'')+'</td>'+
-        '<td>'+reabrirBtn+'</td>'+
+        '<td class="r">'+reabrirBtn+'</td>'+
       '</tr>';
     }).join('');
   } else {
     var atribs=inv.atribuicoes||{};
     tbody.innerHTML=enderecos.map(function(end){
       var atrib=_normalizeAtrib(atribs[end]),modo=atrib.modo,cols=atrib.coletores||[];
-      var mb=modo==='auditoria'
-        ?'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#ede9fe;color:#5b21b6">AUDITORIA</span>'
-        :'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#e8f5ee;color:#1a5c34">COLABR.</span>';
+      var mb=modo==='auditoria'?_modoTag.auditoria:_modoTag.colab;
       var colTxt=cols.length?cols.map(function(c){ return esc(c.nome)+(modo==='auditoria'?' R'+c.rodada:'')+(c.concluido?' ✓':''); }).join(', '):'<span style="color:var(--t3)">—</span>';
       var allDone=cols.length&&cols.every(function(c){ return c.concluido; });
       var status=!cols.length?'sem-coletor':allDone?'concluido':'aguardando';
       var safeEnd=end.replace(/'/g,"\\'");
-      var reabrirBtn=isAberto&&isAdmin&&allDone?'<button class="btn btn-s btn-sm" onclick="reabrirEndereco(\''+invId+'\',\''+safeEnd+'\')" style="color:var(--r);border-color:var(--r)">↩ Reabrir</button>':'';
+      var reabrirBtn=isAberto&&isAdmin&&allDone?'<button class="lk" onclick="reabrirEndereco(\''+invId+'\',\''+safeEnd+'\')">Reabrir</button>':'';
       return '<tr>'+
         '<td><strong>'+esc(end)+'</strong></td>'+
         '<td>'+mb+'</td>'+
         '<td id="inv-coltxt-'+end.replace(/[^a-z0-9]/gi,'_')+'" style="font-size:12px">'+colTxt+'</td>'+
-        '<td id="inv-ec-'+end.replace(/[^a-z0-9]/gi,'_')+'">—</td>'+
+        '<td class="r num" id="inv-ec-'+end.replace(/[^a-z0-9]/gi,'_')+'">—</td>'+
         '<td id="inv-st-'+end.replace(/[^a-z0-9]/gi,'_')+'">'+(_sbMapEnd[status]||'')+'</td>'+
-        '<td>'+reabrirBtn+(isAberto?'<button class="btn btn-s btn-sm" onclick="abrirModalGerenciarEnd(\''+invId+'\',\''+safeEnd+'\')">Gerenciar</button>':'')+'</td>'+
+        '<td class="r" style="white-space:nowrap">'+(isAberto?'<button class="lk" onclick="abrirModalGerenciarEnd(\''+invId+'\',\''+safeEnd+'\')">Gerenciar</button>':'')+(reabrirBtn?'&nbsp;&nbsp;&nbsp;'+reabrirBtn:'')+'</td>'+
       '</tr>';
     }).join('');
   }
@@ -4460,7 +4456,7 @@ var _lastBipsCache = [];
 function _iniciarDashboardRealtime(invId) {
   _pararDashboardRealtime();
   var stEl=document.getElementById('dash-inv-status');
-  if(stEl){stEl.textContent='Conectando...';stEl.style.background='#fff8e1';stEl.style.color='#b7770d';}
+  _setStatusEl(stEl,'Conectando...','warn');
   // Listener no doc do inventário: mantém fila/atribuicoes atualizados
   _invDocListener=db.collection('inv_inventarios').doc(invId).onSnapshot(function(snap){
     if (!snap.exists||!_invAtivo) return;
@@ -4475,7 +4471,7 @@ function _iniciarDashboardRealtime(invId) {
     .onSnapshot(function(snap){
       _lastBipsCache=snap.docs.map(function(d){ return d.data(); });
       renderDashboardRealtime(_lastBipsCache);
-    },function(){ var e=document.getElementById('dash-inv-status'); if(e){e.textContent='⚠ Erro de conexão';e.style.background='#fdecea';e.style.color='#c0392b';} });
+    },function(){ _setStatusEl(document.getElementById('dash-inv-status'),'Erro de conexão','err'); });
 }
 
 function _pararDashboardRealtime() {
@@ -4550,7 +4546,7 @@ function renderInvColetores() {
     wrap.innerHTML=
       '<div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;padding:16px;background:var(--gray);border-radius:12px;flex-wrap:wrap">'+
         '<div>'+
-          '<div style="font-size:36px;font-weight:800;font-family:\'Space Grotesk\',sans-serif;line-height:1;color:'+corN+'">'+n+'</div>'+
+          '<div style="font-size:36px;font-weight:800;line-height:1;color:'+corN+'">'+n+'</div>'+
           '<div style="font-size:12px;color:var(--t2);margin-top:2px">coletores identificados</div>'+
         '</div>'+
         '<div style="font-size:12px;color:var(--t3);flex:1">'+
@@ -4586,7 +4582,7 @@ function _abrirModalEditColetor(regKey) {
   var html =
     '<div id="modal-edit-coletor" onclick="if(event.target===this)_fecharModalEditColetor()" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px">'+
     '<div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:360px;box-shadow:0 8px 40px rgba(0,0,0,.25)">'+
-      '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:17px;font-weight:800;margin-bottom:4px">Editar coletor</div>'+
+      '<div style="font-size:17px;font-weight:800;margin-bottom:4px">Editar coletor</div>'+
       '<div style="font-size:12px;color:var(--t3);margin-bottom:18px">Corrige o registro e atualiza também as bipagens já feitas por ele neste inventário.</div>'+
       '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);display:block;margin-bottom:6px">ID de Coletor</label>'+
       '<input id="edit-coletor-id" type="text" value="'+esc(cur.coletorId)+'" style="width:100%;padding:11px;border:1.5px solid var(--gray2);border-radius:9px;font-size:15px;font-family:monospace;margin-bottom:12px;box-sizing:border-box"/>'+
@@ -5070,7 +5066,7 @@ function _imprimirNaoColetados() {
   var logoUrl=new URL('logo-light.png',location.href).href;
   var agora=new Date(), dh=agora.toLocaleDateString('pt-BR')+' '+String(agora.getHours()).padStart(2,'0')+':'+String(agora.getMinutes()).padStart(2,'0');
   var rows=lista.map(function(it,i){ return '<tr><td class="c">'+(i+1)+'</td><td class="m">'+esc(it.c||'—')+'</td><td class="m">'+esc(it.e||'—')+'</td><td>'+esc(it.d||'—')+'</td><td class="c">'+esc(it.u||'')+'</td><td class="box"></td></tr>'; }).join('');
-  var css='@page{size:A4;margin:12mm}body{font-family:"Space Grotesk",system-ui,sans-serif;color:#111;margin:0;font-size:11px}'+
+  var css='@page{size:A4;margin:12mm}body{font-family:"Manrope",system-ui,sans-serif;color:#111;margin:0;font-size:11px}'+
     'header{display:flex;align-items:center;gap:14px;border-bottom:3px solid #F97316;padding-bottom:8px;margin-bottom:8px}header img{height:40px}header .t{flex:1}.h1{font-size:18px;font-weight:800}.h2{font-size:12px;color:#555}'+
     '.end{text-align:right}.end .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:#777}.end .num{font-size:22px;font-weight:800}'+
     'table{width:100%;border-collapse:collapse}th{background:#ffe7d6;font-size:10px;text-transform:uppercase;letter-spacing:.4px;text-align:left;padding:5px 4px;border-bottom:1.5px solid #f3b184}'+
@@ -5166,7 +5162,7 @@ function renderColetaAvulsa() {
   if (!coletorId) {
     var atual=_getIdColetor();
     wrap.innerHTML='<div style="max-width:360px;margin:50px auto;padding:28px 24px;background:#fff;border-radius:16px;border:1px solid var(--gray2);box-shadow:var(--sh)">'+
-      '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:19px;font-weight:800;margin-bottom:6px">Identificação</div>'+
+      '<div style="font-size:19px;font-weight:800;margin-bottom:6px">Identificação</div>'+
       '<div style="font-size:13px;color:var(--t2);margin-bottom:22px">Informe seu ID de coletor para começar.</div>'+
       '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);display:block;margin-bottom:8px">ID de Coletor</label>'+
       '<input id="avulsa-coletor-id" type="text" value="'+esc(atual||'')+'" placeholder="Ex: 01, A1, JOAO" autocomplete="off" '+
@@ -5205,7 +5201,7 @@ function renderColetaAvulsa() {
       '</div>'+
     '</div>'+
     '<div class="card">'+
-      '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">'+
+      '<div style="font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">'+
         'Bipagens Avulsas'+
         '<button class="btn btn-s btn-sm" onclick="_exportarAvulsaCsv()">⬇ CSV</button>'+
       '</div>'+
@@ -5352,7 +5348,7 @@ function _alertar100pct(){
   }catch(e){}
   // Toast visual
   var t=document.createElement('div');
-  t.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;background:#1a5c34;color:#fff;padding:16px 28px;border-radius:16px;font-weight:800;font-size:16px;font-family:\'Space Grotesk\',sans-serif;box-shadow:0 4px 24px rgba(0,0,0,.25);text-align:center;animation:none';
+  t.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;background:#1a5c34;color:#fff;padding:16px 28px;border-radius:16px;font-weight:800;font-size:16px;box-shadow:0 4px 24px rgba(0,0,0,.25);text-align:center;animation:none';
   t.innerHTML='🎉 Inventário 100% concluído!<br><span style="font-size:12px;font-weight:400">Todos os endereços foram finalizados.</span>';
   document.body.appendChild(t);
   setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); },6000);
@@ -5364,7 +5360,7 @@ function _abrirSemEAN(){
   var html=
     '<div id="modal-sem-ean" onclick="if(event.target===this)_fecharSemEAN()" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2200;display:flex;align-items:flex-end;justify-content:center;padding:0">'+
       '<div style="background:#fff;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;box-shadow:0 -4px 32px rgba(0,0,0,.18)">'+
-        '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:17px;font-weight:800;margin-bottom:4px">📝 Produto Sem Código</div>'+
+        '<div style="font-size:17px;font-weight:800;margin-bottom:4px">📝 Produto Sem Código</div>'+
         '<div style="font-size:13px;color:var(--t3);margin-bottom:16px">Item sem etiqueta ou código de barras.</div>'+
         '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);display:block;margin-bottom:6px">Descrição do produto</label>'+
         '<input id="sem-ean-desc" type="text" placeholder="Ex: Suco laranja caixa 1L" autocomplete="off" style="width:100%;padding:12px 14px;border:2px solid var(--gray2);border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:12px;box-sizing:border-box" onkeydown="if(event.key===\'Enter\')document.getElementById(\'sem-ean-qty\').focus()"/>'+
