@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '7';
+var BUILD = '8';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -1817,7 +1817,7 @@ function _renderResumoTabela(){
       '<button class="btn btn-s btn-sm" onclick="_imprimirResumoPdf()">📄 PDF</button>'+
       '<button class="btn btn-s btn-sm" onclick="_exportarResumoXlsx()">⬇ Excel</button>'+
     '</div>'+
-    '<div style="max-height:70vh;overflow-y:auto"><table style="width:100%;table-layout:auto;font-size:12px"><thead><tr>'+th('Código','codigo')+th('EAN','ean')+th('Descrição','desc')+th('Qtd','qty',1)+th('Bips','bips',1)+th('Endereços (qtd)','endsTxt')+th('Coletores','colsTxt')+th('Custo unit.','custo',1)+th('Custo contado','valor',1)+th('Preço venda','venda',1)+th('Venda contada','valorVenda',1)+'</tr></thead><tbody>'+
+    '<div class="tbl-scroll"><table class="tbl-mon"><thead><tr>'+th('Código','codigo')+th('EAN','ean')+th('Descrição','desc')+th('Qtd','qty',1)+th('Bips','bips',1)+th('Endereços (qtd)','endsTxt')+th('Coletores','colsTxt')+th('Custo unit.','custo',1)+th('Custo contado','valor',1)+th('Preço venda','venda',1)+th('Venda contada','valorVenda',1)+'</tr></thead><tbody>'+
       (rows||'<tr><td colspan="11" style="color:var(--t3)">Nenhuma bipagem.</td></tr>')+
       (linhas.length>lim?'<tr><td colspan="11" style="text-align:center;padding:10px"><button class="btn btn-s btn-sm" onclick="window._resumoLimite=(window._resumoLimite||500)+1000;_renderResumoTabela()">Mostrar mais ('+(linhas.length-lim).toLocaleString('pt-BR')+')</button></td></tr>':'')+
     '</tbody></table></div></div>';

@@ -144,6 +144,10 @@ td strong{font-weight:700;color:var(--t)}
 .tbl{border:1px solid var(--line);border-radius:var(--r8);background:var(--w);overflow:hidden;margin-top:14px;box-shadow:var(--sh2)}
 .tbl>table{min-width:560px}
 .tbl{overflow-x:auto}
+/* Monitor: rola nos dois eixos, sem a margem negativa do .card, cabeçalho fixo */
+.tbl-scroll{max-height:70vh;overflow:auto;-webkit-overflow-scrolling:touch}
+.card>div>table.tbl-mon,.card>div>div>table.tbl-mon{margin:0;width:100%;min-width:1100px;table-layout:auto;font-size:12px}
+.tbl-mon thead th{position:sticky;top:0;background:var(--w);z-index:1;box-shadow:0 1px 0 var(--line)}
 
 /* STATUS: chip tintado com ponto */
 .st{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;white-space:nowrap;color:var(--t2);background:var(--gray);padding:4px 10px 4px 8px;border-radius:999px;line-height:1.3}
