@@ -1,6 +1,6 @@
 const express = require('express');
 const { formatarBalanco } = require('../../lib/formatar');
-const { validarItens, hashItens, paraBlocos } = require('../../lib/catalogo');
+const { validarItens, hashItens, paraBlocos, TAM_BLOCO } = require('../../lib/catalogo');
 function rotasBalancos(repo) {
   const r = express.Router();
   r.get('/', async (req, res, next) => { try {
@@ -20,18 +20,30 @@ function rotasBalancos(repo) {
     const v = validarItens(req.body && req.body.itens);
     if (!v.ok) return res.status(400).json({ erro: 'catalogo_invalido', mensagem: v.mensagem });
     let itens = v.itens;
-    const parte = parseInt(req.body.parte), total = parseInt(req.body.total);
-    if (parte || total) {
-      if (!(parte >= 1 && total >= 1 && parte <= total)) return res.status(400).json({ erro: 'parte_invalida', mensagem: 'parte deve estar entre 1 e total' });
+    const bp = req.body.parte, bt = req.body.total;
+    let parte = 0, total = 0;
+    const emPartes = bp !== undefined || bt !== undefined;
+    if (emPartes) {
+      const inteiro = x => x !== undefined && /^\d+$/.test(String(x)) && Number.isInteger(Number(x));
+      parte = Number(bp); total = Number(bt);
+      if (!(inteiro(bp) && inteiro(bt) && parte >= 1 && total >= 1 && parte <= total && total <= 100))
+        return res.status(400).json({ erro: 'parte_invalida', mensagem: 'parte e total devem ser inteiros entre 1 e 100, com parte <= total' });
       await repo.guardarParteCatalogo(b.id, parte, total, itens);
       if (parte < total) { res.locals.resumo = 'parte ' + parte + '/' + total; return res.status(202).json({ parte, total, aguardando: true }); }
-      itens = [].concat.apply([], await repo.lerPartesCatalogo(b.id));
-      await repo.limparPartesCatalogo(b.id);
+      const partes = await repo.lerPartesCatalogo(b.id);
+      const nums = partes.map(p => p.parte).sort((x, y) => x - y);
+      const completas = partes.length === total && partes.every(p => p.total === total) && nums.every((n, i) => n === i + 1);
+      if (!completas) return res.status(409).json({ erro: 'partes_incompletas', mensagem: 'Faltam partes ou total divergente; reenvie todas as partes' });
+      itens = [].concat.apply([], partes.slice().sort((x, y) => x.parte - y.parte).map(p => p.itens));
     }
     const hash = hashItens(itens);
-    if (b.erp && b.erp.catalogoHash === hash) { res.locals.resumo = 'inalterado'; return res.json({ itens: itens.length, blocos: Math.ceil(itens.length / 1000), hash, inalterado: true }); }
+    if (b.erp && b.erp.catalogoHash === hash) {
+      if (emPartes) await repo.limparPartesCatalogo(b.id);
+      res.locals.resumo = 'inalterado'; return res.json({ itens: itens.length, blocos: Math.ceil(itens.length / TAM_BLOCO), hash, inalterado: true });
+    }
     const blocos = paraBlocos(itens);
     await repo.substituirCatalogo(b.id, req.cliente.id, blocos, { catalogoEm: new Date(), catalogoItens: itens.length, catalogoHash: hash, erro: null, erroEm: null });
+    if (emPartes) await repo.limparPartesCatalogo(b.id);
     res.locals.resumo = itens.length + ' itens';
     res.json({ itens: itens.length, blocos: blocos.length, hash, inalterado: false });
   } catch (e) { next(e); } });

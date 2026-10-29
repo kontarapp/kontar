@@ -28,13 +28,16 @@ function criarRepo(db) {
     },
     async substituirCatalogo(invId, clienteId, blocos, meta) {
       const col = db.collection('inv_catalogo_blocos');
+      for (let i = 0; i < blocos.length; i += 20) {
+        const b = db.batch();
+        for (let j = i; j < Math.min(i + 20, blocos.length); j++) b.set(col.doc(invId + '_' + j), { invId, clienteId, n: j, itens: blocos[j] });
+        await b.commit();
+      }
       const antigos = await col.where('invId', '==', invId).get();
-      let b = db.batch(), n = 0;
-      const flush = async () => { if (n) { await b.commit(); b = db.batch(); n = 0; } };
-      for (const d of antigos.docs) { b.delete(d.ref); if (++n >= 400) await flush(); }
-      await flush();
-      for (let i = 0; i < blocos.length; i++) { b.set(col.doc(invId + '_' + i), { invId, clienteId, n: i, itens: blocos[i] }); if (++n >= 20) await flush(); }
-      await flush();
+      const sobra = antigos.docs.filter(d => d.data().n >= blocos.length);
+      for (let i = 0; i < sobra.length; i += 400) {
+        const b = db.batch(); sobra.slice(i, i + 400).forEach(d => b.delete(d.ref)); await b.commit();
+      }
       const upd = {}; Object.keys(meta).forEach(k => { upd['erp.' + k] = meta[k]; });
       await db.collection('inv_inventarios').doc(invId).update(upd);
     },
@@ -43,7 +46,7 @@ function criarRepo(db) {
     },
     async lerPartesCatalogo(invId) {
       const s = await db.collection('inv_inventarios').doc(invId).collection('catalogo_partes').orderBy('parte').get();
-      return s.docs.map(d => d.data().itens);
+      return s.docs.map(d => { const x = d.data(); return { parte: x.parte, total: x.total, itens: x.itens }; });
     },
     async limparPartesCatalogo(invId) {
       const s = await db.collection('inv_inventarios').doc(invId).collection('catalogo_partes').get();

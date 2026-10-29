@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const InvCore = require('./inv-bip-core.js');
 const LIMITE = 5000;
+const TAM_BLOCO = 1000;
 function num(v) { if (v == null || v === '') return null; const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? null : n; }
 function validarItens(itens) {
   if (!Array.isArray(itens) || !itens.length) return { ok: false, mensagem: 'itens deve ser uma lista com ao menos 1 item' };
@@ -20,5 +21,5 @@ function hashItens(itens) {
   itens.forEach(it => h.update([it.c, it.e, it.d, it.u, it.q, it.k, it.v].map(x => x == null ? '' : String(x)).join('\u001f') + '\n'));
   return h.digest('hex');
 }
-function paraBlocos(itens) { return InvCore.montarBlocos(itens, 1000); }
-module.exports = { validarItens, hashItens, paraBlocos, LIMITE };
+function paraBlocos(itens) { return InvCore.montarBlocos(itens, TAM_BLOCO); }
+module.exports = { validarItens, hashItens, paraBlocos, LIMITE, TAM_BLOCO };

@@ -9,7 +9,7 @@ function repoCat(bal) {
   const r = repoFake([bal]);
   r.gravacoes = []; r.partes = {};
   r.substituirCatalogo = async (invId, clienteId, blocos, meta) => { r.gravacoes.push({ invId, blocos: blocos.length, meta }); bal.erp = Object.assign({}, bal.erp, meta); };
-  r.guardarParteCatalogo = async (invId, parte, total, itens) => { r.partes[parte] = itens; };
+  r.guardarParteCatalogo = async (invId, parte, total, itens) => { r.partes[parte] = { parte, total, itens }; };
   r.lerPartesCatalogo = async () => Object.keys(r.partes).sort((a, b) => a - b).map(k => r.partes[k]);
   r.limparPartesCatalogo = async () => { r.partes = {}; };
   return r;
@@ -37,4 +37,38 @@ test('PUT catalogo em partes monta na última', async () => {
   assert.equal(p1.status, 202); assert.equal(repo.gravacoes.length, 0);
   const p2 = await chamar(app, 'PUT', '/v1/balancos/a/catalogo', { parte: 2, total: 2, itens: [{ codigo: '2' }] }, H);
   assert.equal(p2.status, 200); assert.equal(p2.body.itens, 2); assert.equal(repo.gravacoes.length, 1);
+});
+
+const URL = '/v1/balancos/a/catalogo';
+test('PUT catalogo em partes: limpa as partes após gravar', async () => {
+  const repo = repoCat(bal()); const app = criarApp({ repo });
+  await chamar(app, 'PUT', URL, { parte: 1, total: 2, itens: [{ codigo: '1' }] }, H);
+  const p2 = await chamar(app, 'PUT', URL, { parte: 2, total: 2, itens: [{ codigo: '2' }] }, H);
+  assert.equal(p2.status, 200); assert.deepEqual(repo.partes, {});
+});
+test('PUT catalogo: última parte sem a parte 1 → 409 partes_incompletas, nada gravado', async () => {
+  const repo = repoCat(bal());
+  const r = await chamar(criarApp({ repo }), 'PUT', URL, { parte: 2, total: 2, itens: [{ codigo: '2' }] }, H);
+  assert.equal(r.status, 409); assert.equal(r.body.erro, 'partes_incompletas'); assert.equal(repo.gravacoes.length, 0);
+});
+test('PUT catalogo: totais divergentes (1/2 depois 2/3) → 409', async () => {
+  const repo = repoCat(bal()); const app = criarApp({ repo });
+  await chamar(app, 'PUT', URL, { parte: 1, total: 2, itens: [{ codigo: '1' }] }, H);
+  await chamar(app, 'PUT', URL, { parte: 2, total: 3, itens: [{ codigo: '2' }] }, H);
+  const r = await chamar(app, 'PUT', URL, { parte: 3, total: 3, itens: [{ codigo: '3' }] }, H);
+  assert.equal(r.status, 409); assert.equal(r.body.erro, 'partes_incompletas'); assert.equal(repo.gravacoes.length, 0);
+});
+test('PUT catalogo: parte/total estritos → 400 parte_invalida', async () => {
+  const it = [{ codigo: '1' }];
+  for (const c of [{ parte: 1 }, { total: 2 }, { parte: '1abc', total: 2 }, { parte: 0, total: 0 }, { parte: 1, total: 101 }, { parte: 3, total: 2 }, { parte: 1.5, total: 2 }]) {
+    const repo = repoCat(bal());
+    const r = await chamar(criarApp({ repo }), 'PUT', URL, Object.assign({ itens: it }, c), H);
+    assert.equal(r.status, 400, JSON.stringify(c)); assert.equal(r.body.erro, 'parte_invalida');
+    assert.equal(repo.gravacoes.length, 0);
+  }
+});
+test('PUT catalogo: balanço de outro cliente → 404', async () => {
+  const b = bal(); b.clienteId = 'outro';
+  const r = await chamar(criarApp({ repo: repoCat(b) }), 'PUT', URL, { itens: [{ codigo: '1' }] }, H);
+  assert.equal(r.status, 404);
 });
