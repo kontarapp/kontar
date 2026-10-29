@@ -93,6 +93,27 @@ function rotasBalancos(repo) {
     res.locals.resumo = out.totais.itens + ' itens';
     res.json(out);
   } catch (e) { next(e); } });
+  r.post('/:id/contagem/confirmar', async (req, res, next) => { try {
+    const b = await repo.obterBalanco(req.cliente.id, req.params.id);
+    if (!b) return res.status(404).json({ erro: 'nao_encontrado', mensagem: 'Balanço não encontrado' });
+    if (b.status !== 'encerrado') return res.status(409).json({ erro: 'balanco_aberto', mensagem: 'Só balanço encerrado tem contagem a confirmar' });
+    const agora = new Date();
+    await repo.atualizarBalanco(b.id, { 'erp.contagemRecebidaEm': agora });
+    res.locals.resumo = 'confirmada';
+    res.json({ ok: true, contagemRecebidaEm: agora.toISOString() });
+  } catch (e) { next(e); } });
+  r.patch('/:id/erp', async (req, res, next) => { try {
+    const b = await repo.obterBalanco(req.cliente.id, req.params.id);
+    if (!b) return res.status(404).json({ erro: 'nao_encontrado', mensagem: 'Balanço não encontrado' });
+    const c = req.body || {}, upd = {}, agora = new Date();
+    if (c.erro !== undefined) { upd['erp.erro'] = c.erro ? String(c.erro).slice(0, 500) : null; upd['erp.erroEm'] = c.erro ? agora : null; }
+    if (c.contagemEnviadaEm === true) upd['erp.contagemEnviadaEm'] = agora;
+    if (c.pedirCatalogo === false) upd['erp.pedirCatalogo'] = false;
+    if (!Object.keys(upd).length) return res.status(400).json({ erro: 'patch_invalido', mensagem: 'Informe erro, contagemEnviadaEm ou pedirCatalogo' });
+    await repo.atualizarBalanco(b.id, upd);
+    res.locals.resumo = Object.keys(upd).join(',');
+    res.json({ ok: true });
+  } catch (e) { next(e); } });
   return r;
 }
 module.exports = { rotasBalancos };
