@@ -40,6 +40,10 @@ Cobre `lib/inv-bip-core.js` (normalização de EAN, catálogo, resolução de c�
 
 `teste-carga.html` (mesma página usada no FC360): entre com um usuário do projeto de teste, crie um inventário "CARGA" com catálogo de 45.000 itens e rode N coletores simulados gravando bipagens pelo mesmo caminho do app (set sem esperar o servidor). Mostra enviadas/confirmadas/erros, latência média e p95, bip/s, e confere a contagem no servidor. O botão **Limpar tudo** apaga o inventário de carga e seus dados. Nunca rodar no projeto de um cliente.
 
+## API
+
+A API REST para ERPs parceiros (catálogo, balanços e contagem) está documentada em [`docs/api.md`](docs/api.md). O token é gerado pelo administrador no menu **Integrações** do app, que também lista as últimas chamadas recebidas.
+
 ## Configurar o Firebase (projeto novo)
 
 1. Em <https://console.firebase.google.com> crie um projeto (ex.: `kontar-prod`).
