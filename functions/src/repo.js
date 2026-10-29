@@ -70,8 +70,12 @@ function criarRepo(db) {
       const doc = { nome: d.nome, loja: d.loja, status: 'aberto', tipo: d.tipo, sequencial: d.sequencial, clienteId, enderecos: d.enderecos, setores: d.setores,
         atribuicoes: {}, modoFila: true, fila: {}, totalBipagens: 0, modoOrganizacao: d.setores.length ? 'setores_end' : 'enderecos',
         criadoEm: FieldValue.serverTimestamp(), criadoPor: 'api', origem: 'erp', erp: { refErp: d.refErp } };
-      const ref = await db.collection('inv_inventarios').add(doc);
-      const snap = await ref.get(); return Object.assign({ id: ref.id }, snap.data());
+      const id = ('erp_' + clienteId + '_' + d.refErp).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 1400);
+      const ref = db.collection('inv_inventarios').doc(id);
+      let criado = true;
+      try { await ref.create(doc); }
+      catch (e) { if (e && (e.code === 6 || /ALREADY_EXISTS/i.test(e.message || ''))) criado = false; else throw e; }
+      const snap = await ref.get(); return { balanco: Object.assign({ id: ref.id }, snap.data()), criado };
     },
     async atualizarBalanco(invId, campos) { await db.collection('inv_inventarios').doc(invId).update(campos); }
   };

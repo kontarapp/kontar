@@ -2,6 +2,7 @@ const express = require('express');
 const { formatarBalanco, iso } = require('../../lib/formatar');
 const { montarContagem } = require('../../lib/contagem');
 const { validarItens, hashItens, paraBlocos, TAM_BLOCO } = require('../../lib/catalogo');
+const InvCore = require('../../lib/inv-bip-core.js');
 const { validarNovoBalanco, validarPatch } = require('../../lib/validar-balanco');
 function rotasBalancos(repo) {
   const r = express.Router();
@@ -54,9 +55,9 @@ function rotasBalancos(repo) {
     if (!v.ok) return res.status(400).json({ erro: 'balanco_invalido', mensagem: v.mensagem });
     const existente = await repo.balancoPorRefErp(req.cliente.id, v.dados.refErp);
     if (existente) { res.locals.resumo = 'já existia ' + v.dados.refErp; return res.status(200).json(formatarBalanco(existente)); }
-    const novo = await repo.criarBalanco(req.cliente.id, v.dados);
-    res.locals.resumo = 'criado ' + v.dados.refErp;
-    res.status(201).json(formatarBalanco(novo));
+    const { balanco, criado } = await repo.criarBalanco(req.cliente.id, v.dados);
+    res.locals.resumo = (criado ? 'criado ' : 'já existia ') + v.dados.refErp;
+    res.status(criado ? 201 : 200).json(formatarBalanco(balanco));
   } catch (e) { next(e); } });
   r.patch('/:id', async (req, res, next) => { try {
     const b = await repo.obterBalanco(req.cliente.id, req.params.id);
@@ -64,9 +65,23 @@ function rotasBalancos(repo) {
     if (b.origem !== 'erp' || b.status !== 'aberto') return res.status(409).json({ erro: 'nao_editavel', mensagem: 'Só balanço de origem ERP e aberto pode ser alterado pela API' });
     const v = validarPatch(req.body);
     if (!v.ok) return res.status(400).json({ erro: 'patch_invalido', mensagem: v.mensagem });
-    await repo.atualizarBalanco(b.id, v.dados);
+    const upd = Object.assign({}, v.dados);
+    if (upd.enderecos) {
+      const removidos = (b.enderecos || []).filter(e => !upd.enderecos.includes(e));
+      if (removidos.length) {
+        const bips = await repo.lerBipagens(b.id);
+        const emUso = removidos.filter(e => !InvCore.podeRemoverEndereco(b, e, bips));
+        if (emUso.length) return res.status(409).json({ erro: 'endereco_em_uso', mensagem: 'Endereço(s) em uso não podem ser removidos: ' + emUso.join(', ') });
+      }
+    }
+    if (upd.setores) {
+      const faltam = (b.setores || []).filter(s => !upd.setores.includes(s));
+      if (faltam.length) return res.status(409).json({ erro: 'setor_em_uso', mensagem: 'Setores só podem ser adicionados; não removidos: ' + faltam.join(', ') });
+      upd.modoOrganizacao = upd.setores.length ? 'setores_end' : 'enderecos';
+    }
+    await repo.atualizarBalanco(b.id, upd);
     res.locals.resumo = 'atualizado';
-    res.json(formatarBalanco(Object.assign({}, b, v.dados)));
+    res.json(formatarBalanco(Object.assign({}, b, upd)));
   } catch (e) { next(e); } });
   r.get('/:id/contagem', async (req, res, next) => { try {
     const b = await repo.obterBalanco(req.cliente.id, req.params.id);
