@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '11';
+var BUILD = '12';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -4712,6 +4712,7 @@ function _descFixa(mostrar, keypad){
     el=document.createElement('div'); el.id='inv-desc-fixo';
     el.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:1500;background:#fff8e1;border-top:3px solid #F97316;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));box-shadow:0 -4px 16px rgba(0,0,0,.15);display:none;max-height:70vh;overflow:auto';
     el.innerHTML='<div id="inv-desc-fixo-txt" style="font-size:15px;font-weight:700;color:#111;line-height:1.3;margin-bottom:8px"></div>'+
+      '<div id="inv-desc-fixo-visor" style="display:none;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:2px solid #F97316;border-radius:10px;padding:6px 12px;margin-bottom:8px"><span id="inv-desc-fixo-visor-lbl" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#7a5a00">Qtd</span><span id="inv-desc-fixo-visor-val" style="font-size:26px;font-weight:800;font-family:monospace;color:#111;min-height:32px"></span></div>'+
       '<div id="inv-desc-fixo-kp" style="display:none"></div>';
     document.body.appendChild(el);
     _montarKeypadQty();
@@ -4734,7 +4735,36 @@ function _descFixa(mostrar, keypad){
     _kpAlvo = keypad==='ean' ? 'ean' : 'qty';
     if(txtEl) txtEl.textContent = _kpAlvo==='ean' ? 'Digite o código de barras e toque em ENTER' : txt+' — informe a quantidade';
     el.style.display='block'; if(kp) kp.style.display=keypad?'block':'none';
-  } else { el.style.display='none'; _kpAlvo='qty'; }
+    _visorAtualizar();
+    _kpAbrirEspaco(!!keypad);
+  } else { el.style.display='none'; _kpAlvo='qty'; _kpAbrirEspaco(false); }
+}
+// Visor na faixa do teclado próprio: mostra o que está sendo digitado mesmo se o campo ficar escondido.
+function _visorAtualizar(){
+  var v=document.getElementById('inv-desc-fixo-visor'), kp=document.getElementById('inv-desc-fixo-kp');
+  if(!v) return;
+  var aberto=kp&&kp.style.display==='block';
+  v.style.display=aberto?'flex':'none'; if(!aberto) return;
+  var alvo=document.getElementById(_kpAlvo==='ean'?'inv-ean-input':'inv-qty-input');
+  document.getElementById('inv-desc-fixo-visor-lbl').textContent=_kpAlvo==='ean'?'Código':'Qtd';
+  document.getElementById('inv-desc-fixo-visor-val').textContent=alvo?alvo.value:'';
+}
+// Teclado próprio aberto: dá espaço embaixo da página e rola até o campo ficar acima da faixa.
+function _kpAbrirEspaco(abrir){
+  var el=document.getElementById('inv-desc-fixo');
+  if(!abrir||!el){ document.body.style.paddingBottom=''; return; }
+  setTimeout(function(){
+    var h=el.offsetHeight||0; document.body.style.paddingBottom=(h+16)+'px';
+    var alvo=document.getElementById(_kpAlvo==='ean'?'inv-ean-input':'inv-qty-input'); if(!alvo) return;
+    var vv=window.visualViewport, altura=vv?vv.height:window.innerHeight;
+    var limite=altura-h-12, r=alvo.getBoundingClientRect();
+    if(r.bottom<=limite && r.top>=0) return;
+    var delta=r.bottom-limite;
+    // Rola o primeiro ancestral com rolagem própria; se nenhum, a janela.
+    var p=alvo.parentElement;
+    while(p&&p!==document.body){ var cs=getComputedStyle(p); if(/(auto|scroll)/.test(cs.overflowY)&&p.scrollHeight>p.clientHeight){ p.scrollTop+=delta; return; } p=p.parentElement; }
+    window.scrollBy(0,delta);
+  },30);
 }
 // Alvo do teclado próprio: 'qty' (padrão, abre sozinho no foco da Qtd) ou 'ean' (sob demanda pelo botão ⌨).
 var _kpAlvo='qty';
@@ -4781,6 +4811,7 @@ function _kpQty(b){
   }
   // O EAN tem listener de 'input' (preview do produto, pulo pra Qtd em EAN completo): dispara igual ao digitar.
   if(_kpAlvo==='ean') alvo.dispatchEvent(new Event('input',{bubbles:true}));
+  _visorAtualizar();
 }
 // Botão ✕ ao lado do EAN: apaga o código lido errado sem depender de teclado (o campo não abre
 // o teclado do SO por causa do leitor Bluetooth, então esse era o único jeito de corrigir).
