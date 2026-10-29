@@ -8,7 +8,8 @@
 // Uso:
 //   node scripts/balanco-dlinks.js --arquivo "C:\Users\tiago\Downloads\cgprodutos_1.txt" \
 //        --nome "Balanço Loja" --enderecos 1-30 --apagar-ativos
-//   Credenciais: --email x --senha y  ou  KONTAR_EMAIL / KONTAR_SENHA no ambiente.
+//   Credenciais: firebase-service-account.json na raiz (preferido, ignorado pelo git)
+//                ou --email x --senha y / KONTAR_EMAIL + KONTAR_SENHA. --so-login só testa a autenticação.
 //   --dry-run  = só lê o arquivo e mostra o plano, não toca no Firestore.
 //
 // Formato Dlinks (cgprodutos): codigo|descricao|0|0,01|preco_venda|0|flag|0 (sem cabeçalho).
@@ -102,6 +103,25 @@ function dec(f) { // decodifica doc REST → objeto simples (só o que precisamo
   Object.keys(f || {}).forEach(k => { const v = f[k]; out[k] = v.stringValue ?? (v.integerValue != null ? +v.integerValue : v.doubleValue ?? v.booleanValue ?? (v.arrayValue ? (v.arrayValue.values || []).map(x => x.stringValue ?? x) : (v.mapValue ? dec(v.mapValue.fields) : null))); });
   return out;
 }
+// Chave de serviço (firebase-service-account.json na raiz, ignorada pelo git): JWT RS256 → access token do Google.
+const SA_PATH = path.join(__dirname, '..', 'firebase-service-account.json');
+async function loginServiceAccount() {
+  const sa = JSON.parse(fs.readFileSync(SA_PATH, 'utf8'));
+  const b64 = (o) => Buffer.from(typeof o === 'string' ? o : JSON.stringify(o)).toString('base64url');
+  const now = Math.floor(Date.now() / 1000);
+  const unsigned = b64({ alg: 'RS256', typ: 'JWT' }) + '.' + b64({ iss: sa.client_email, scope: 'https://www.googleapis.com/auth/datastore', aud: sa.token_uri, iat: now, exp: now + 3600 });
+  const sig = require('crypto').sign('RSA-SHA256', Buffer.from(unsigned), sa.private_key).toString('base64url');
+  const r = await fetch(sa.token_uri, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: `grant_type=${encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer')}&assertion=${unsigned}.${sig}` });
+  const j = await r.json();
+  if (!r.ok) throw new Error('Chave de serviço recusada: ' + ((j.error_description || j.error) || r.status));
+  TOKEN = j.access_token; return { email: sa.client_email, sa: true };
+}
+async function getDoc(col, id) {
+  const r = await fetch(`${FS}/${col}/${id}`, { headers: { Authorization: 'Bearer ' + TOKEN } });
+  if (r.status === 404) return null;
+  const j = await r.json(); if (!r.ok) throw new Error((j.error && j.error.message) || r.status);
+  return { name: j.name, id, data: dec(j.fields) };
+}
 async function login(email, senha) {
   const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: senha, returnSecureToken: true }) });
   const j = await r.json();
@@ -129,13 +149,20 @@ const docName = (col, id) => `projects/${PROJECT}/databases/(default)/documents/
   console.log(`Itens: ${itens.length} | com EAN: ${comEan} | só código interno: ${itens.length - comEan} | sem preço de venda: ${semVenda} | blocos: ${blocos.length}`);
   console.log(`Inventário: "${NOME}" | endereços: ${ENDERECOS.length} (${ENDERECOS[0]}…${ENDERECOS[ENDERECOS.length - 1]}) | setores: ${SETORES.join(',')} | meta ${META}% | fila ligada, sequencial desligado, tipo geral`);
   if (DRY) { console.log('[dry-run] nada gravado.'); return; }
-  if (!EMAIL || !SENHA) { console.error('Faltam credenciais: --email/--senha ou KONTAR_EMAIL/KONTAR_SENHA.'); process.exit(2); }
-
-  const auth = await login(EMAIL, SENHA);
-  const us = await runQuery('usuarios', [['email', 'EQUAL', String(auth.email || EMAIL).toLowerCase()]]);
-  if (!us.length) throw new Error('Usuário logado não tem doc em usuarios/.');
-  const user = us[0]; const clienteId = user.data.clienteId || ''; const loja = user.data.loja || '';
-  console.log(`Logado como ${auth.email} (usuario ${user.id}, cliente "${clienteId}")`);
+  let auth, user;
+  if (EMAIL && SENHA) {
+    auth = await login(EMAIL, SENHA);
+    const us = await runQuery('usuarios', [['email', 'EQUAL', String(auth.email || EMAIL).toLowerCase()]]);
+    if (!us.length) throw new Error('Usuário logado não tem doc em usuarios/.');
+    user = us[0];
+  } else if (fs.existsSync(SA_PATH)) {
+    auth = await loginServiceAccount();
+    user = await getDoc('usuarios', args.usuario || 'admin'); // quem fica como criadoPor
+    if (!user) throw new Error('usuarios/' + (args.usuario || 'admin') + ' não existe (use --usuario ID).');
+  } else { console.error('Faltam credenciais: --email/--senha (ou KONTAR_EMAIL/KONTAR_SENHA) ou firebase-service-account.json na raiz.'); process.exit(2); }
+  const clienteId = args.cliente || user.data.clienteId || ''; const loja = user.data.loja || '';
+  console.log(`Logado como ${auth.email}${auth.sa ? ' (chave de serviço)' : ''} (usuario ${user.id}, cliente "${clienteId}")`);
+  if (args['so-login']) return;
 
   if (APAGAR) {
     const abertos = await runQuery('inv_inventarios', [['clienteId', 'EQUAL', clienteId], ['status', 'EQUAL', 'aberto']]);
