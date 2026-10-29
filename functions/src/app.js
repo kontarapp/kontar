@@ -1,6 +1,7 @@
 // functions/src/app.js
 const express = require('express');
 const { exigirToken } = require('./auth');
+const { rotasBalancos } = require('./rotas/balancos');
 
 // deps: { repo } — injetado para testes sem Firestore.
 function criarApp(deps) {
@@ -10,6 +11,7 @@ function criarApp(deps) {
   const v1 = express.Router();
   v1.use(exigirToken(deps.repo));
   v1.get('/eu', (req, res) => res.json({ clienteId: req.cliente.id, nome: req.cliente.nome }));
+  v1.use('/balancos', rotasBalancos(deps.repo));
   app.use('/v1', v1);
   app.use((req, res) => res.status(404).json({ erro: 'nao_encontrado', mensagem: 'Rota inexistente' }));
   app.use((err, req, res, next) => {
