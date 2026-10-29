@@ -4390,7 +4390,7 @@ function renderInvEnderecos() {
       var status=!cols.length?'sem-coletor':allDone?'concluido':'aguardando';
       var safeEnd=end.replace(/'/g,"\\'");
       var reabrirBtn=isAberto&&isAdmin&&allDone?'<button class="lk" onclick="reabrirEndereco(\''+invId+'\',\''+safeEnd+'\')">Reabrir</button>':'';
-      var remBtn=(isAberto&&isAdmin&&InvCore.podeRemoverEndereco(inv,end))?'<button class="lk lk-d" onclick="removerEndereco(''+invId+'',''+safeEnd+'')">Remover</button>':'';
+      var remBtn=(isAberto&&isAdmin&&InvCore.podeRemoverEndereco(inv,end))?'<button class="lk lk-d" onclick="removerEndereco(\''+invId+'\',\''+safeEnd+'\')">Remover</button>':'';
       return '<tr>'+
         '<td><strong>'+esc(end)+'</strong></td>'+
         '<td>'+mb+'</td>'+
