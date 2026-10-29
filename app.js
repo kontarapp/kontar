@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '6';
+var BUILD = '7';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -667,6 +667,7 @@ function setupRole() {
   var isColetor = r==='coletor';
   show('sb-adm-sec', isAdmin && !isColetor);
   show('nav-users', isAdmin && !isColetor);
+  show('nav-integracoes', isAdmin && !isColetor);
   show('sb-inv-sec', _moduloAtivo('inventario'));
   show('nav-inv-gestao', isAdmin && !isColetor && _moduloAtivo('inventario'));
   show('nav-inv-coleta', false);
@@ -754,6 +755,7 @@ function setDate() {
 // ===========================================
 var PAGE_TITLES = {
   usuarios:'Cadastro de Usuários',
+  integracoes:'Integrações',
   inv:'Inventários','inv-coleta':'Minha Coleta','inv-avulsa':'Coleta Avulsa'
 };
 
@@ -781,6 +783,9 @@ function nav(page, el) {
   _atualizarBotaoVoltar();
   if (page==='capa') {
     renderCapa();
+  }
+  if (page==='integracoes') {
+    renderIntegracoes();
   }
   if (page==='usuarios') {
     loadUsersFromFirebase(function(){ renderUsers(); });
@@ -1011,6 +1016,33 @@ function renderUsers() {
   _cnt('u-sup',function(u){return u.perfil==='supervisor';});
   _cnt('u-col',function(u){return u.perfil==='coletor';});
   _cnt('u-outros',function(u){return ['admin','supervisor','coletor'].indexOf(u.perfil)<0;});
+}
+function renderIntegracoes() {
+  var cid = S.currentUser && S.currentUser.clienteId; if (!cid) return;
+  var info = document.getElementById('integ-token-info'), tb = document.getElementById('integ-log');
+  db.collection('clientes').doc(cid).get().then(function(d){
+    var i = (d.exists && d.data().integracao) || null;
+    if (info) info.textContent = i && i.tokenHash ? ('Token ativo, gerado em ' + (i.geradoEm && i.geradoEm.toDate ? i.geradoEm.toDate().toLocaleString('pt-BR') : '—') + ' por ' + (i.geradoPor || '')) : 'Nenhum token gerado ainda.';
+  }).catch(function(){ if (info) info.textContent = 'Não foi possível ler a configuração.'; });
+  db.collection('clientes').doc(cid).collection('integracao_log').orderBy('em','desc').limit(100).get().then(function(s){
+    if (!tb) return;
+    tb.innerHTML = s.empty ? '<tr><td colspan="5" style="color:var(--t3)">Nenhuma chamada ainda.</td></tr>' : s.docs.map(function(x){
+      var l = x.data(); var em = l.em && l.em.toDate ? l.em.toDate().toLocaleString('pt-BR') : '';
+      return '<tr><td>' + esc(em) + '</td><td style="font-family:monospace">' + esc(l.rota) + '</td><td style="color:' + (l.status < 400 ? 'var(--g)' : 'var(--r)') + ';font-weight:700">' + esc(l.status) + '</td><td>' + esc(l.ms) + '</td><td>' + esc(l.resumo || '') + '</td></tr>';
+    }).join('');
+  }).catch(function(e){ if (tb) tb.innerHTML = '<tr><td colspan="5" style="color:var(--r)">Erro ao ler o log: ' + esc(e.message) + '</td></tr>'; });
+}
+function gerarTokenIntegracao() {
+  var cid = S.currentUser && S.currentUser.clienteId; if (!cid) return;
+  if (!confirm('Gerar um novo token? O token anterior deixa de funcionar na hora.')) return;
+  var bytes = new Uint8Array(24); crypto.getRandomValues(bytes);
+  var token = Array.from(bytes).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+  hashPassword(token).then(function(hash){
+    return db.collection('clientes').doc(cid).set({ integracao: { tokenHash: hash, geradoEm: firebase.firestore.FieldValue.serverTimestamp(), geradoPor: S.currentUser.nome || S.currentUser.id } }, { merge: true });
+  }).then(function(){
+    var el = document.getElementById('integ-token-novo'); if (el) { el.style.display = 'block'; el.innerHTML = '<div style="font-family:inherit;font-weight:700;margin-bottom:6px">Copie agora. Este token não será mostrado de novo.</div>' + esc(token); }
+    renderIntegracoes();
+  }).catch(function(e){ showToast('Erro ao gerar token: ' + e.message, 6000); });
 }
 // ===========================================
 // UTILS

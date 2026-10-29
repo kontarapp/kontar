@@ -23,6 +23,10 @@ service cloud.firestore {
     // Leitura só por get (nunca list) e escrita manual pelo Console.
     match /clientes/{clienteId} {
       allow get: if logado();
+      // Só o campo integracao pode ser escrito pelo app (token de integração).
+      allow update: if logado() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['integracao']);
+      allow create: if logado() && request.resource.data.keys().hasOnly(['integracao']);
+      match /integracao_log/{logId} { allow read: if logado(); }
     }
 
     // Coleções do inventário: qualquer usuário logado lê e escreve
