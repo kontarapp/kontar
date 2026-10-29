@@ -3777,7 +3777,7 @@ function renderColeta() {
           '</div>'+
           '<button type="button" id="inv-cam-btn" onclick="_toggleCamFixa()" title="Ligar câmera (fica aberta pra ler em sequência)" style="padding:13px 16px;background:#fff;border:2px solid var(--gray2);border-radius:10px;font-size:18px;cursor:pointer">📷</button>'+
           '<div style="width:80px"><label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);display:block;margin-bottom:6px">Qtd</label>'+
-            '<input id="inv-qty-input" type="text" inputmode="decimal" autocomplete="off" value="1" style="width:100%;padding:13px 10px;border:2px solid var(--gray2);border-radius:10px;font-size:16px;text-align:center;font-family:inherit" onkeydown="return _qtyKeydown(event)" onfocus="_qtyFocado()" onblur="setTimeout(function(){ var a=document.activeElement; if(_kpAlvo!==\'ean\'&&(!a||(a.id!==\'inv-qty-input\'&&a.id!==\'inv-fator-input\'))) _descFixa(false); },80)"/></div>'+
+            '<input id="inv-qty-input" type="text" inputmode="decimal" autocomplete="off" value="1" style="width:100%;padding:13px 10px;border:2px solid var(--gray2);border-radius:10px;font-size:16px;text-align:center;font-family:inherit" onkeydown="return _qtyKeydown(event)" onfocus="_qtyFocado()" onclick="_qtyToque()" onblur="setTimeout(function(){ var a=document.activeElement; if(_kpAlvo!==\'ean\'&&(!a||(a.id!==\'inv-qty-input\'&&a.id!==\'inv-fator-input\'))) _descFixa(false); },80)"/></div>'+
           '<div id="inv-fator-wrap" style="width:62px;'+(palletOn?'':'display:none')+'">'+
             '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);display:block;margin-bottom:6px">Qtd Emb</label>'+
             '<input id="inv-fator-input" type="number" value="1" min="1" style="width:100%;padding:13px 8px;border:2px solid var(--gray2);border-radius:10px;font-size:16px;text-align:center;font-family:inherit" onkeydown="if(event.key===\'Enter\')registrarBipagem()" onfocus="_descFixa(true,false)" onblur="setTimeout(function(){ var a=document.activeElement; if(_kpAlvo!==\'ean\'&&(!a||(a.id!==\'inv-qty-input\'&&a.id!==\'inv-fator-input\'))) _descFixa(false); },80)"/></div>'+
@@ -4863,6 +4863,9 @@ if (window.visualViewport) window.visualViewport.addEventListener('resize', _vvA
 window.addEventListener('orientationchange', function(){ _vvMax=0; setTimeout(_vvAtualizarMax,600); });
 function _qtyFocado() {
   _vvAtualizarMax();
+  // Foco veio de um bip (leitor/câmera) e o teclado nativo não está aberto: o Android não abre o
+  // teclado virtual em focus() via JS (e com leitor Bluetooth pareado nem abre) — mostra o próprio já.
+  if (Date.now()-_qtyFocoScanTs < 1000 && !_tecladoNativoAberto()) { ++_qtyFocoChk; _descFixa(true, true); return; }
   _descFixa(true, false);
   var id = ++_qtyFocoChk;
   setTimeout(function(){
@@ -4872,7 +4875,17 @@ function _qtyFocado() {
     _descFixa(true, true);
   }, 600);
 }
-function _tecladoNativoAberto(){ var vv=window.visualViewport; return (_vvMax - (vv ? vv.height : window.innerHeight)) >= 120; }
+// 180 px: teclado virtual de verdade tem 250+ px; a barra do Gboard em modo teclado físico (~50 px)
+// somada à barra de endereço do Chrome (~56 px) não pode ser confundida com teclado aberto.
+function _tecladoNativoAberto(){ var vv=window.visualViewport; return (_vvMax - (vv ? vv.height : window.innerHeight)) >= 180; }
+// Toque na Qtd já focada não dispara onfocus de novo: sem teclado nativo, reabre o próprio.
+function _qtyToque(){
+  setTimeout(function(){
+    var a=document.activeElement; if(!a||a.id!=='inv-qty-input') return;
+    var kp=document.getElementById('inv-desc-fixo-kp'); if(kp&&kp.style.display==='block') return;
+    if(!_tecladoNativoAberto()) _descFixa(true, true);
+  }, 350);
+}
 // Pela câmera o teclado do Android pode abrir depois da checagem: quando abrir, o próprio sai da frente.
 if (window.visualViewport) window.visualViewport.addEventListener('resize', function(){
   var a=document.activeElement; if(!a||a.id!=='inv-qty-input'||_kpAlvo!=='qty') return;
