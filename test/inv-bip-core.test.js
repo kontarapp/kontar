@@ -290,3 +290,33 @@ test('resultado: bip com codigo interno antigo e EAN válido casa pelo EAN', fun
   assert.equal(res.totais.naoCadastrados, 0);
   assert.equal(res.linhas.find(function (x) { return x.desc === 'ACUCAR 5KG'; }).contado, 50);
 });
+
+// ── pausar / endereços em andamento ────────────────────────────────────
+test('podeBipar só com status aberto', function () {
+  assert.equal(Core.podeBipar({ status: 'aberto' }), true);
+  assert.equal(Core.podeBipar({ status: 'pausado' }), false);
+  assert.equal(Core.podeBipar({ status: 'encerrado' }), false);
+  assert.equal(Core.podeBipar(null), false);
+});
+test('prepararNovosEnderecos ignora vazios, separa repetidos e não altera existentes', function () {
+  var ex = ['1', '2'];
+  var r = Core.prepararNovosEnderecos(ex, ' 2 \n\n3\n3\n 4\n');
+  assert.deepEqual(r.novos, ['3', '4']);
+  assert.deepEqual(r.repetidos, ['2', '3']);
+  assert.deepEqual(ex, ['1', '2']);
+});
+test('prepararNovosEnderecos aplica maiúsculas quando pedido', function () {
+  var r = Core.prepararNovosEnderecos(['LOJA'], 'loja\nfreezer', { maiusculas: true });
+  assert.deepEqual(r.novos, ['FREEZER']);
+  assert.deepEqual(r.repetidos, ['LOJA']);
+});
+test('podeRemoverEndereco: regras', function () {
+  var base = { enderecos: ['1', '2'], fila: {}, atribuicoes: {} };
+  assert.equal(Core.podeRemoverEndereco(base, '1'), true);
+  assert.equal(Core.podeRemoverEndereco({ enderecos: ['1'], fila: {}, atribuicoes: {} }, '1'), false, 'último');
+  assert.equal(Core.podeRemoverEndereco(Object.assign({}, base, { fila: { '1': { coletores: [{ coletorId: 'A' }] } } }), '1'), false, 'fila');
+  assert.equal(Core.podeRemoverEndereco(Object.assign({}, base, { fila: { '1': { userId: 'u1' } } }), '1'), false, 'fila legado');
+  assert.equal(Core.podeRemoverEndereco(Object.assign({}, base, { atribuicoes: { '1': { userId: 'u1' } } }), '1'), false, 'atribuição');
+  assert.equal(Core.podeRemoverEndereco(base, '1', [{ endereco: '1' }]), false, 'bipagem');
+  assert.equal(Core.podeRemoverEndereco(base, '1', [{ endereco: '2' }]), true);
+});
