@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '12';
+var BUILD = '13';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -3439,12 +3439,20 @@ function _iniciarCamFixa(){
     var agora=Date.now();
     // Exige a mesma leitura 2x seguidas (em até 1,2 s) antes de aceitar: corta leitura errada da câmera
     if (!(_camFixaCand.val===val&&agora-_camFixaCand.t<1200)) { _camFixaCand={val:val,t:agora}; return; }
-    if (val===_camFixaUltimo.val&&agora-_camFixaUltimo.t<2500) return; // mesma etiqueta ainda na frente da câmera
-    _camFixaUltimo={val:val,t:agora}; _camFixaCand={val:'',t:0};
+    // Mesma etiqueta ainda na frente da câmera: janela deslizante — só aceita de novo depois que o
+    // código ficou 1,5 s sem aparecer (tirou a câmera do item), não a cada 2,5 s com ele parado ali.
+    if (val===_camFixaUltimo.val&&agora-_camFixaUltimo.t<1500) { _camFixaUltimo.t=agora; return; }
     var ei=document.getElementById('inv-ean-input'), qi=document.getElementById('inv-qty-input');
     if (!ei||ei.disabled) return;
-    // Item anterior ainda esperando a Qtd: fecha com a Qtd que está e segue pro novo
-    if (ei.value.trim()&&document.activeElement===qi) registrarBipagem();
+    // Item anterior ainda esperando a Qtd: a câmera NÃO fecha sozinha (registrava sem o Enter quando a
+    // etiqueta ficava na frente ou a câmera pegava o código vizinho). Espera o operador confirmar.
+    if (ei.value.trim()&&document.activeElement===qi) {
+      _camFixaCand={val:'',t:0};
+      if (val===ei.value.trim()) _camFixaUltimo={val:val,t:agora};
+      var mq=document.getElementById('inv-cam-msg'); if(mq) mq.textContent='Confirme a quantidade (↵) pra ler o próximo';
+      return;
+    }
+    _camFixaUltimo={val:val,t:agora}; _camFixaCand={val:'',t:0};
     _bipSom('leitura');
     ei.value=val; ei.dispatchEvent(new Event('input'));
     var m=document.getElementById('inv-cam-msg'); if(m){ m.textContent='Lido: '+val; setTimeout(function(){ if(m) m.textContent='Aponte pro código de barras'; },1500); }
