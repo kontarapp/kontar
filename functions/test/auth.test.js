@@ -40,3 +40,9 @@ test('falha na busca do token → 500 JSON interno', async () => {
     assert.equal(r.status, 500); assert.equal(r.body.erro, 'interno');
   } finally { console.error = orig; }
 });
+test('falha ao gravar log não impede a resposta', async () => {
+  const repo = repoFake();
+  repo.registrarLog = async () => { throw new Error('log fora'); };
+  const r = await chamar(criarApp({ repo }), 'GET', '/v1/eu', null, { authorization: 'Bearer tok-ok' });
+  assert.equal(r.status, 200); assert.equal(r.body.clienteId, 'loja-teste');
+});

@@ -72,3 +72,17 @@ test('PUT catalogo: balanço de outro cliente → 404', async () => {
   const r = await chamar(criarApp({ repo: repoCat(b) }), 'PUT', URL, { itens: [{ codigo: '1' }] }, H);
   assert.equal(r.status, 404);
 });
+test('PUT catalogo: parte 1 descarta sobras de envio anterior', async () => {
+  const repo = repoCat(bal()); const app = criarApp({ repo });
+  repo.partes[3] = { parte: 3, total: 3, itens: [{ c: 'velho' }] };
+  const p1 = await chamar(app, 'PUT', '/v1/balancos/a/catalogo', { parte: 1, total: 2, itens: [{ codigo: '1' }] }, H);
+  assert.equal(p1.status, 202);
+  const p2 = await chamar(app, 'PUT', '/v1/balancos/a/catalogo', { parte: 2, total: 2, itens: [{ codigo: '2' }] }, H);
+  assert.equal(p2.status, 200); assert.equal(p2.body.itens, 2); assert.deepEqual(repo.partes, {});
+});
+test('PUT catalogo: parte com mais de 2000 itens → 400', async () => {
+  const repo = repoCat(bal());
+  const itens = Array.from({ length: 2001 }, (_, i) => ({ codigo: String(i + 1) }));
+  const r = await chamar(criarApp({ repo }), 'PUT', '/v1/balancos/a/catalogo', { parte: 1, total: 2, itens }, H);
+  assert.equal(r.status, 400); assert.equal(r.body.erro, 'catalogo_invalido');
+});

@@ -75,7 +75,10 @@ function criarRepo(db) {
       let criado = true;
       try { await ref.create(doc); }
       catch (e) { if (e && (e.code === 6 || /ALREADY_EXISTS/i.test(e.message || ''))) criado = false; else throw e; }
-      const snap = await ref.get(); return { balanco: Object.assign({ id: ref.id }, snap.data()), criado };
+      const snap = await ref.get(); const data = snap.data();
+      if (!criado && !(data && data.clienteId === clienteId && data.erp && data.erp.refErp === d.refErp))
+        throw { code: 'conflito_id', message: 'refErp conflita com outro balanço' };
+      return { balanco: Object.assign({ id: ref.id }, data), criado };
     },
     async atualizarBalanco(invId, campos) { await db.collection('inv_inventarios').doc(invId).update(campos); }
   };

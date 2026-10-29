@@ -82,3 +82,9 @@ test('POST mesma refErp para outro cliente cria novo (201)', async () => {
   const r = await chamar(criarApp({ repo }), 'POST', '/v1/balancos', { refErp: '77', nome: 'N', loja: '1' }, H);
   assert.equal(r.status, 201); assert.notEqual(r.body.id, 'o'); assert.equal(repo.chamadasCriar, 1);
 });
+test('POST balancos: conflito de id com outro dono → 409 conflito_refErp', async () => {
+  const repo = repoEsc([]);
+  repo.criarBalanco = async () => { throw { code: 'conflito_id', message: 'refErp conflita com outro balanço' }; };
+  const r = await chamar(criarApp({ repo }), 'POST', '/v1/balancos', { refErp: '77', nome: 'Out', loja: '1', enderecos: ['1'] }, H);
+  assert.equal(r.status, 409); assert.equal(r.body.erro, 'conflito_refErp');
+});

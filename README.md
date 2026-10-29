@@ -44,6 +44,10 @@ Cobre `lib/inv-bip-core.js` (normalização de EAN, catálogo, resolução de c�
 
 A API REST para ERPs parceiros (catálogo, balanços e contagem) está documentada em [`docs/api.md`](docs/api.md). O token é gerado pelo administrador no menu **Integrações** do app, que também lista as últimas chamadas recebidas.
 
+Notas internas da API:
+
+- Deploy: `npm run deploy` em `functions/` usa `firebase deploy --force`, que define a política de limpeza de artefatos e suprime as confirmações interativas do deploy.
+
 ## Configurar o Firebase (projeto novo)
 
 1. Em <https://console.firebase.google.com> crie um projeto (ex.: `kontar-prod`).

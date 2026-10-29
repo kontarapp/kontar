@@ -1,7 +1,7 @@
 const express = require('express');
 const { formatarBalanco, iso } = require('../../lib/formatar');
 const { montarContagem } = require('../../lib/contagem');
-const { validarItens, hashItens, paraBlocos, TAM_BLOCO } = require('../../lib/catalogo');
+const { validarItens, hashItens, paraBlocos, TAM_BLOCO, LIMITE_PARTE } = require('../../lib/catalogo');
 const InvCore = require('../../lib/inv-bip-core.js');
 const { validarNovoBalanco, validarPatch } = require('../../lib/validar-balanco');
 function rotasBalancos(repo) {
@@ -31,12 +31,17 @@ function rotasBalancos(repo) {
       parte = Number(bp); total = Number(bt);
       if (!(inteiro(bp) && inteiro(bt) && parte >= 1 && total >= 1 && parte <= total && total <= 100))
         return res.status(400).json({ erro: 'parte_invalida', mensagem: 'parte e total devem ser inteiros entre 1 e 100, com parte <= total' });
+      if (itens.length > LIMITE_PARTE) return res.status(400).json({ erro: 'catalogo_invalido', mensagem: 'Máximo de ' + LIMITE_PARTE + ' itens por parte' });
+      if (parte === 1) await repo.limparPartesCatalogo(b.id);
       await repo.guardarParteCatalogo(b.id, parte, total, itens);
       if (parte < total) { res.locals.resumo = 'parte ' + parte + '/' + total; return res.status(202).json({ parte, total, aguardando: true }); }
       const partes = await repo.lerPartesCatalogo(b.id);
       const nums = partes.map(p => p.parte).sort((x, y) => x - y);
       const completas = partes.length === total && partes.every(p => p.total === total) && nums.every((n, i) => n === i + 1);
-      if (!completas) return res.status(409).json({ erro: 'partes_incompletas', mensagem: 'Faltam partes ou total divergente; reenvie todas as partes' });
+      if (!completas) {
+        await repo.limparPartesCatalogo(b.id);
+        return res.status(409).json({ erro: 'partes_incompletas', mensagem: 'Faltam partes ou total divergente; reenvie a partir da parte 1' });
+      }
       itens = [].concat.apply([], partes.slice().sort((x, y) => x.parte - y.parte).map(p => p.itens));
     }
     const hash = hashItens(itens);
@@ -58,7 +63,10 @@ function rotasBalancos(repo) {
     const { balanco, criado } = await repo.criarBalanco(req.cliente.id, v.dados);
     res.locals.resumo = (criado ? 'criado ' : 'já existia ') + v.dados.refErp;
     res.status(criado ? 201 : 200).json(formatarBalanco(balanco));
-  } catch (e) { next(e); } });
+  } catch (e) {
+    if (e && e.code === 'conflito_id') return res.status(409).json({ erro: 'conflito_refErp', mensagem: e.message });
+    next(e);
+  } });
   r.patch('/:id', async (req, res, next) => { try {
     const b = await repo.obterBalanco(req.cliente.id, req.params.id);
     if (!b) return res.status(404).json({ erro: 'nao_encontrado', mensagem: 'Balanço não encontrado' });

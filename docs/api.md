@@ -44,6 +44,7 @@ Qualquer erro devolve:
 | 409 | `nao_editavel` | `PATCH /balancos/{id}` em balanço que não é `origem: "erp"` e `status: "aberto"` |
 | 409 | `endereco_em_uso` | `PATCH` remove endereço que já tem bipagem |
 | 409 | `setor_em_uso` | `PATCH` tenta remover setor (setores só podem ser adicionados) |
+| 409 | `conflito_refErp` | `POST /balancos`: o `refErp` conflita com outro balanço |
 | 409 | `partes_incompletas` | Última parte do catálogo chegou mas faltam partes ou o `total` diverge |
 | 500 | `interno` | Erro interno |
 
@@ -76,7 +77,7 @@ Devolvido por `GET /balancos`, `GET /balancos/{id}`, `POST /balancos` e `PATCH /
 }
 ```
 
-- `status`: `aberto` ou `encerrado`. `origem`: `erp` ou `kontar`. `tipo`: `geral` ou `parcial`.
+- `status`: `aberto`, `pausado` ou `encerrado`. `origem`: `erp` ou `kontar`. `tipo`: `geral`, `parcial` ou `surpresa` (`surpresa` só existe em balanços criados no app).
 - `totais.bipagens` só é contado em `GET /balancos/{id}`; na listagem e nas demais rotas vem `0`.
 
 ## Rotas
@@ -191,7 +192,7 @@ Corpo:
 | `codigo` / `ean` | Ao menos um é obrigatório (`400 catalogo_invalido` indicando o número do item) |
 | `descricao` | Cortada em 120 caracteres |
 | `un` | Convertida para maiúsculas |
-| `estoque`, `custo`, `venda` | Número ou string numérica (aceita vírgula decimal); opcionais |
+| `estoque`, `custo`, `venda` | Opcionais. Devem ser números JSON ou strings com vírgula decimal sem separador de milhar (ex.: `4.10` ou `"4,10"`); `"1.234,56"` NÃO é aceito |
 
 Limites: até **5.000 itens por chamada**; `itens` vazio é rejeitado.
 
@@ -210,11 +211,11 @@ Resposta 200:
 
 **Idempotência:** o catálogo é comparado por hash do conteúdo. Reenviar o mesmo catálogo devolve `200` com `"inalterado": true` e não regrava nada.
 
-**Em partes** (catálogos maiores que 5.000 itens): envie `parte` e `total` no corpo, ambos inteiros de 1 a 100, com `parte <= total` (senão `400 parte_invalida`). Cada parte também respeita o limite de 5.000 itens.
+**Em partes** (catálogos maiores que 5.000 itens): envie `parte` e `total` no corpo, ambos inteiros de 1 a 100, com `parte <= total` (senão `400 parte_invalida`). Cada parte tem no máximo 2.000 itens (acima disso, `400 catalogo_invalido`).
 
 - Partes `1..total-1`: resposta `202` `{ "parte": 1, "total": 3, "aguardando": true }`. O catálogo ainda não foi alterado.
-- Última parte (`parte == total`): o servidor confere que existem exatamente as partes `1..total`, todas com o mesmo `total`. Se sim, junta tudo na ordem das partes e responde `200` como na chamada única. Se não, `409 partes_incompletas`: reenvie todas as partes.
-- Reenviar uma parte já enviada a substitui.
+- Última parte (`parte == total`): o servidor confere que existem exatamente as partes `1..total`, todas com o mesmo `total`. Se sim, junta tudo na ordem das partes e responde `200` como na chamada única. Se não, `409 partes_incompletas`: reenvie a partir da parte 1.
+- Reenviar uma parte já enviada a substitui. A parte 1 apaga qualquer envio anterior em andamento; no `409 partes_incompletas` as partes guardadas são descartadas e o envio recomeça da parte 1.
 
 ```bash
 curl -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
@@ -300,7 +301,3 @@ Alternativa, com o balanço nascendo no ERP: no lugar do passo 1, o ERP cria o b
 4. Qual usuário MySQL (e permissões) o conector pode usar para ler essas tabelas e gravar a contagem?
 
 Se a pergunta 1 não tiver resposta (não existe balanço aberto no Dlinks), todo balanço nasce no Kontar e o ERP apenas envia o catálogo.
-
-## Notas internas
-
-- Deploy: `npm run deploy` em `functions/` usa `firebase deploy --force`, que define a política de limpeza de artefatos e suprime as confirmações interativas do deploy.
