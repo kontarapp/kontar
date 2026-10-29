@@ -2,6 +2,7 @@ const express = require('express');
 const { formatarBalanco, iso } = require('../../lib/formatar');
 const { montarContagem } = require('../../lib/contagem');
 const { validarItens, hashItens, paraBlocos, TAM_BLOCO } = require('../../lib/catalogo');
+const { validarNovoBalanco, validarPatch } = require('../../lib/validar-balanco');
 function rotasBalancos(repo) {
   const r = express.Router();
   r.get('/', async (req, res, next) => { try {
@@ -47,6 +48,25 @@ function rotasBalancos(repo) {
     if (emPartes) await repo.limparPartesCatalogo(b.id);
     res.locals.resumo = itens.length + ' itens';
     res.json({ itens: itens.length, blocos: blocos.length, hash, inalterado: false });
+  } catch (e) { next(e); } });
+  r.post('/', async (req, res, next) => { try {
+    const v = validarNovoBalanco(req.body);
+    if (!v.ok) return res.status(400).json({ erro: 'balanco_invalido', mensagem: v.mensagem });
+    const existente = await repo.balancoPorRefErp(req.cliente.id, v.dados.refErp);
+    if (existente) { res.locals.resumo = 'já existia ' + v.dados.refErp; return res.status(200).json(formatarBalanco(existente)); }
+    const novo = await repo.criarBalanco(req.cliente.id, v.dados);
+    res.locals.resumo = 'criado ' + v.dados.refErp;
+    res.status(201).json(formatarBalanco(novo));
+  } catch (e) { next(e); } });
+  r.patch('/:id', async (req, res, next) => { try {
+    const b = await repo.obterBalanco(req.cliente.id, req.params.id);
+    if (!b) return res.status(404).json({ erro: 'nao_encontrado', mensagem: 'Balanço não encontrado' });
+    if (b.origem !== 'erp' || b.status !== 'aberto') return res.status(409).json({ erro: 'nao_editavel', mensagem: 'Só balanço de origem ERP e aberto pode ser alterado pela API' });
+    const v = validarPatch(req.body);
+    if (!v.ok) return res.status(400).json({ erro: 'patch_invalido', mensagem: v.mensagem });
+    await repo.atualizarBalanco(b.id, v.dados);
+    res.locals.resumo = 'atualizado';
+    res.json(formatarBalanco(Object.assign({}, b, v.dados)));
   } catch (e) { next(e); } });
   r.get('/:id/contagem', async (req, res, next) => { try {
     const b = await repo.obterBalanco(req.cliente.id, req.params.id);

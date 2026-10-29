@@ -61,7 +61,19 @@ function criarRepo(db) {
     async lerBipagens(invId) {
       const s = await db.collection('inv_bipagens').where('invId', '==', invId).get();
       return s.docs.map(d => d.data());
-    }
+    },
+    async balancoPorRefErp(clienteId, refErp) {
+      const s = await db.collection('inv_inventarios').where('clienteId', '==', clienteId).where('erp.refErp', '==', refErp).limit(1).get();
+      return s.empty ? null : Object.assign({ id: s.docs[0].id }, s.docs[0].data());
+    },
+    async criarBalanco(clienteId, d) {
+      const doc = { nome: d.nome, loja: d.loja, status: 'aberto', tipo: d.tipo, sequencial: d.sequencial, clienteId, enderecos: d.enderecos, setores: d.setores,
+        atribuicoes: {}, modoFila: true, fila: {}, totalBipagens: 0, modoOrganizacao: d.setores.length ? 'setores_end' : 'enderecos',
+        criadoEm: FieldValue.serverTimestamp(), criadoPor: 'api', origem: 'erp', erp: { refErp: d.refErp } };
+      const ref = await db.collection('inv_inventarios').add(doc);
+      const snap = await ref.get(); return Object.assign({ id: ref.id }, snap.data());
+    },
+    async atualizarBalanco(invId, campos) { await db.collection('inv_inventarios').doc(invId).update(campos); }
   };
 }
 module.exports = { criarRepo };
