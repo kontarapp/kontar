@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '5';
+var BUILD = '6';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -2792,7 +2792,7 @@ function criarInventario() {
     if (!enderecos.length) { if(errEl){errEl.textContent='Nenhum endereço válido.';errEl.style.display='block';} return; }
   }
   // Bloqueia duplo clique
-  var criarBtn = document.querySelector('#modal-inv .btn.btn-p');
+  var criarBtn = document.getElementById('ninv-criar'); // antes pegava o 1º .btn-p do modal = botão Gerar
   if (criarBtn) { criarBtn.disabled = true; criarBtn.textContent = 'Criando...'; }
   var loja = (S.currentUser && S.currentUser.loja) ? S.currentUser.loja : '';
   db.collection('inv_inventarios').add({
@@ -5503,23 +5503,24 @@ function _aplicarStatusDetalhe(){
 }
 
 // ── Coletor: acompanha o doc do inventário (pausa/retomada em tempo real) ──
-var _coletaInvUnsub=null, _coletaInvId=null;
+var _coletaInvUnsub=null, _coletaInvId=null, _coletaInvStatus=null;
 function _iniciarColetaRealtime(invId){
   if(_coletaInvId===invId&&_coletaInvUnsub) return;
-  _pararColetaRealtime(); _coletaInvId=invId;
+  _pararColetaRealtime(); _coletaInvId=invId; _coletaInvStatus=null;
   _coletaInvUnsub=db.collection('inv_inventarios').doc(invId).onSnapshot(function(snap){
     if(!snap.exists) return;
     var d=snap.data();
     var idx=(S.invsCache||[]).findIndex(function(i){ return i.id===invId; });
-    var antes=idx>=0?S.invsCache[idx].status:null;
+    // Compara com o último status visto por ESTE listener (não com o cache, que outro listener pode já ter atualizado).
+    var antes=_coletaInvStatus; _coletaInvStatus=d.status;
     if(idx>=0){
       S.invsCache[idx]=Object.assign({id:invId},d);
       if(_invColetaAtual&&_invColetaAtual.inv&&_invColetaAtual.inv.id===invId) _invColetaAtual.inv=S.invsCache[idx];
     }
-    if(antes!==d.status) renderColeta();
+    if(antes!==null&&antes!==d.status) renderColeta();
   }, function(){ /* erro silencioso: a trava em registrarBipagem continua valendo */ });
 }
-function _pararColetaRealtime(){ if(_coletaInvUnsub){ _coletaInvUnsub(); _coletaInvUnsub=null; } _coletaInvId=null; }
+function _pararColetaRealtime(){ if(_coletaInvUnsub){ _coletaInvUnsub(); _coletaInvUnsub=null; } _coletaInvId=null; _coletaInvStatus=null; }
 function _htmlColetaPausada(nome){
   return '<div style="text-align:center;padding:60px 20px;color:var(--t3)">'+
     '<div style="font-size:48px;margin-bottom:16px">⏸️</div>'+
