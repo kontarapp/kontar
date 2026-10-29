@@ -18,7 +18,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=8"/>
+<link rel="stylesheet" href="style.css?v=9"/>
 </head>
 <body>
 
@@ -125,13 +125,44 @@
 
       <!-- INTEGRAÇÕES -->
       <div id="panel-integracoes" class="panel">
-        <div class="ph"><h3>Integrações</h3><span class="sub">Token e chamadas da API do ERP</span></div>
+        <div class="ph"><h3>Integrações</h3><span class="sub">Tudo que o ERP precisa pra se integrar ao Kontar: endereço da API, token, documentação, conector e log</span></div>
+        <div class="card" style="max-width:720px;margin-bottom:16px">
+          <div style="font-weight:700;margin-bottom:6px">Endereço da API</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <code id="integ-api-url" style="font-size:12.5px;padding:8px 10px;background:var(--gray);border-radius:8px;word-break:break-all">https://southamerica-east1-kontar-e2650.cloudfunctions.net/api/v1</code>
+            <button class="btn btn-sm" onclick="copiarTexto(document.getElementById('integ-api-url').textContent,this)">Copiar</button>
+          </div>
+          <p style="font-size:12.5px;color:var(--t3);margin:8px 0 0">Teste rápido sem token: <code>GET /ping</code>. Com token: <code>GET /eu</code> devolve o cliente.</p>
+        </div>
         <div class="card" style="max-width:720px">
           <div style="font-weight:700;margin-bottom:6px">Token de integração (ERP)</div>
           <p style="font-size:13px;color:var(--t2)">O ERP envia este token no cabeçalho <code>Authorization: Bearer</code>. Gerar um novo invalida o anterior.</p>
           <div id="integ-token-info" style="font-size:13px;color:var(--t2);margin-bottom:10px"></div>
           <button class="btn btn-p" onclick="gerarTokenIntegracao()">Gerar novo token</button>
           <div id="integ-token-novo" style="display:none;margin-top:12px;padding:12px;background:#fff8e1;border:1px solid #f0c000;border-radius:10px;font-family:monospace;word-break:break-all;user-select:all"></div>
+        </div>
+        <div class="card" style="max-width:720px;margin-top:16px">
+          <div style="font-weight:700;margin-bottom:6px">Documentação</div>
+          <p style="font-size:13px;color:var(--t2);margin:0 0 10px">Manual completo da API pra entregar ao desenvolvedor do ERP: rotas, exemplos, códigos de erro e o que o ERP precisa implementar.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a class="btn btn-p" href="docs/api.pdf" download="Kontar-Integracao-ERP.pdf">Baixar PDF</a>
+            <a class="btn" href="docs/api.html" target="_blank" rel="noopener">Abrir no navegador</a>
+          </div>
+        </div>
+        <div class="card" style="max-width:720px;margin-top:16px">
+          <div style="font-weight:700;margin-bottom:6px">Guia rápido para o ERP</div>
+          <ol style="font-size:13px;color:var(--t2);margin:0;padding-left:20px;line-height:1.7">
+            <li>Listar os balanços abertos da loja: <code>GET /balancos?loja=X&amp;status=aberto</code></li>
+            <li>Enviar o catálogo com estoque, custo e venda: <code>PUT /balancos/{id}/catalogo</code></li>
+            <li>Acompanhar até o status virar <code>encerrado</code>: <code>GET /balancos/{id}</code></li>
+            <li>Buscar a contagem e confirmar o recebimento: <code>GET /balancos/{id}/contagem</code> e <code>POST /balancos/{id}/contagem/confirmar</code></li>
+          </ol>
+          <p style="font-size:12.5px;color:var(--t3);margin:10px 0 0">Alternativa: o ERP cria o balanço (<code>POST /balancos</code> com <code>refErp</code>) e o Kontar espelha. Tudo detalhado na documentação.</p>
+        </div>
+        <div class="card" style="max-width:720px;margin-top:16px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="font-weight:700">Conector ERP (instalador)</div><span class="tg tg-am">Em desenvolvimento</span></div>
+          <p style="font-size:13px;color:var(--t2);margin:0 0 8px">Programa instalado no servidor central do cliente, pra ERPs que não chamam a API sozinhos. Ele lê o cadastro e o estoque do banco do ERP, envia o catálogo pro balanço e grava a contagem de volta no ERP quando o balanço encerra.</p>
+          <p style="font-size:12.5px;color:var(--t3);margin:0">O instalador vai pedir: o token desta tela, o endereço e usuário do banco do ERP e o mapa das lojas. Quando estiver pronto, o download aparece aqui.</p>
         </div>
         <div class="card" style="margin-top:16px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-weight:700">Últimas chamadas</div><button class="btn btn-sm" onclick="renderIntegracoes()">&#8635; Atualizar</button></div>
@@ -641,7 +672,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="lib/inv-bip-core.js?v=8"></script>
+<script src="lib/inv-bip-core.js?v=9"></script>
 <script>
 // Painel de erros na tela (?debug=1): iPhone/Chrome iOS nao tem console acessivel na loja.
 (function(){
@@ -666,7 +697,7 @@
   setInterval(function(){ if(box) log('INFO','vivo, tela='+(document.querySelector('.page.on,.view.on')||{}).id); },15000);
 })();
 </script>
-<script src="app.js?v=8" defer></script>
+<script src="app.js?v=9" defer></script>
 
 </body>
 </html>

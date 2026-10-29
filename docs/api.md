@@ -1,6 +1,6 @@
 # API Kontar para parceiros (ERP)
 
-Documento para o desenvolvedor do ERP que vai integrar com o Kontar (primeiro parceiro: Dlinks). A API é REST/JSON. Cada cliente do Kontar tem seu próprio token e só enxerga os próprios balanços.
+Documento para o desenvolvedor do ERP que vai integrar com o Kontar. A API é REST/JSON. Cada cliente do Kontar tem seu próprio token e só enxerga os próprios balanços.
 
 ## URL base
 
@@ -293,11 +293,11 @@ Fluxo mínimo, com o balanço criado no Kontar (origem Kontar):
 
 Alternativa, com o balanço nascendo no ERP: no lugar do passo 1, o ERP cria o balanço com `POST /balancos` informando `refErp` (idempotente, pode repetir sem duplicar) e mantém endereços/setores atualizados com `PATCH /balancos/{id}`. Os passos 2 a 4 são iguais.
 
-## Perguntas ao Dlinks
+## Perguntas ao ERP parceiro
 
 1. Em qual tabela fica o balanço aberto (número, loja, data, status, tipo geral/parcial, sequencial)? Existe tabela de endereços do balanço e recorte de itens para o balanço parcial?
-2. Qual tabela e layout o Dlinks lê como contagem de inventário (nome, colunas obrigatórias, campo de status/lido, se aceita local/endereço)?
+2. Qual tabela e layout o ERP lê como contagem de inventário (nome, colunas obrigatórias, campo de status/lido, se aceita local/endereço)?
 3. Qual coluna de estoque por loja na tabela de itens, e quais colunas de custo e venda por loja?
 4. Qual usuário MySQL (e permissões) o conector pode usar para ler essas tabelas e gravar a contagem?
 
-Se a pergunta 1 não tiver resposta (não existe balanço aberto no Dlinks), todo balanço nasce no Kontar e o ERP apenas envia o catálogo.
+Se a pergunta 1 não tiver resposta (não existe balanço aberto no ERP), todo balanço nasce no Kontar e o ERP apenas envia o catálogo.

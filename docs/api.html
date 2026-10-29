@@ -1,0 +1,130 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kontar — Integração com ERP (API)</title>
+<style>body{font-family:"Segoe UI",system-ui,sans-serif;max-width:900px;margin:0 auto;padding:32px 24px;color:#1B1B1F;line-height:1.55}h1{font-size:26px;border-bottom:3px solid #F97316;padding-bottom:8px}h2{font-size:20px;margin-top:34px;border-bottom:1px solid #e5e5e5;padding-bottom:4px}h3{font-size:16px;margin-top:26px;color:#F97316}code{font-family:Consolas,monospace;font-size:12.5px;background:#F5F3EE;padding:1px 5px;border-radius:4px}pre{background:#1B1B1F;color:#F5F3EE;padding:12px 14px;border-radius:8px;overflow:auto;font-size:12px}pre code{background:none;color:inherit;padding:0}table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}th{background:#F5F3EE}@media print{body{padding:0}pre{white-space:pre-wrap}h2{page-break-after:avoid}}</style></head><body><h1>API Kontar para parceiros (ERP)</h1>
+<p>Documento para o desenvolvedor do ERP que vai integrar com o Kontar. A API é REST/JSON. Cada cliente do Kontar tem seu próprio token e só enxerga os próprios balanços.</p>
+<h2>URL base</h2>
+<pre><code>https://southamerica-east1-kontar-e2650.cloudfunctions.net/api/v1</code></pre>
+<p>Todas as rotas abaixo são relativas a essa URL (nos exemplos, <code>$BASE</code>). Corpos de requisição são JSON (<code>Content-Type: application/json</code>, até 10 MB). Datas são ISO 8601 em UTC.</p>
+<h2>Autenticação</h2>
+<p>Todas as rotas, exceto <code>GET /ping</code>, exigem o cabeçalho:</p>
+<pre><code>Authorization: Bearer &lt;token&gt;</code></pre>
+<p>O token é gerado pelo administrador do cliente no app Kontar: menu <b>Integrações</b> → <b>Gerar novo token</b>. O token aparece uma única vez; gerar um novo invalida o anterior. Sem cabeçalho ou com token inválido a resposta é <code>401 nao_autorizado</code>.</p>
+<p>Toda chamada autenticada é registrada (rota, status, tempo) e aparece em "Últimas chamadas" na aba Integrações.</p>
+<h2>Convenção de erros</h2>
+<p>Qualquer erro devolve:</p>
+<pre><code>{ "erro": "codigo", "mensagem": "texto legível" }</code></pre>
+<table><thead><tr><th>HTTP</th><th><code>erro</code></th><th>Quando</th></tr></thead><tbody><tr><td>400</td><td><code>json_invalido</code></td><td>Corpo não é JSON válido</td></tr><tr><td>400</td><td><code>balanco_invalido</code></td><td><code>POST /balancos</code> com campos faltando/inválidos</td></tr><tr><td>400</td><td><code>patch_invalido</code></td><td><code>PATCH</code> sem nada para atualizar ou com valor inválido</td></tr><tr><td>400</td><td><code>catalogo_invalido</code></td><td><code>itens</code> vazio, acima de 5.000, ou item sem <code>codigo</code> e sem <code>ean</code></td></tr><tr><td>400</td><td><code>parte_invalida</code></td><td><code>parte</code>/<code>total</code> fora de 1..100 ou <code>parte</code> &gt; <code>total</code></td></tr><tr><td>401</td><td><code>nao_autorizado</code></td><td>Token ausente ou inválido</td></tr><tr><td>404</td><td><code>nao_encontrado</code></td><td>Rota inexistente ou balanço não encontrado (ou de outro cliente)</td></tr><tr><td>409</td><td><code>balanco_encerrado</code></td><td><code>PUT catalogo</code> em balanço encerrado</td></tr><tr><td>409</td><td><code>balanco_aberto</code></td><td><code>GET contagem</code> / <code>POST contagem/confirmar</code> em balanço ainda aberto</td></tr><tr><td>409</td><td><code>nao_editavel</code></td><td><code>PATCH /balancos/{id}</code> em balanço que não é <code>origem: "erp"</code> e <code>status: "aberto"</code></td></tr><tr><td>409</td><td><code>endereco_em_uso</code></td><td><code>PATCH</code> remove endereço que já tem bipagem</td></tr><tr><td>409</td><td><code>setor_em_uso</code></td><td><code>PATCH</code> tenta remover setor (setores só podem ser adicionados)</td></tr><tr><td>409</td><td><code>conflito_refErp</code></td><td><code>POST /balancos</code>: o <code>refErp</code> conflita com outro balanço</td></tr><tr><td>409</td><td><code>partes_incompletas</code></td><td>Última parte do catálogo chegou mas faltam partes ou o <code>total</code> diverge</td></tr><tr><td>500</td><td><code>interno</code></td><td>Erro interno</td></tr></tbody></table>
+<h2>Objeto Balanço</h2>
+<p>Devolvido por <code>GET /balancos</code>, <code>GET /balancos/{id}</code>, <code>POST /balancos</code> e <code>PATCH /balancos/{id}</code>:</p>
+<pre><code>{
+  "id": "b-1",
+  "nome": "Balanço Geral Loja 1",
+  "loja": "1",
+  "status": "aberto",
+  "origem": "erp",
+  "tipo": "geral",
+  "sequencial": false,
+  "enderecos": ["C01", "C02"],
+  "setores": [],
+  "criadoEm": "2026-10-29T14:00:00.000Z",
+  "encerradoEm": null,
+  "erp": {
+    "refErp": "BAL-1001",
+    "catalogoEm": null,
+    "catalogoItens": null,
+    "contagemEnviadaEm": null,
+    "contagemRecebidaEm": null,
+    "erro": null
+  },
+  "totais": { "bipagens": 0, "enderecos": 2 }
+}</code></pre>
+<ul><li><code>status</code>: <code>aberto</code>, <code>pausado</code> ou <code>encerrado</code>. <code>origem</code>: <code>erp</code> ou <code>kontar</code>. <code>tipo</code>: <code>geral</code>, <code>parcial</code> ou <code>surpresa</code> (<code>surpresa</code> só existe em balanços criados no app).</li><li><code>totais.bipagens</code> só é contado em <code>GET /balancos/{id}</code>; na listagem e nas demais rotas vem <code>0</code>.</li></ul>
+<h2>Rotas</h2>
+<h3>GET /ping (pública)</h3>
+<p>Verifica se a API está no ar. Não exige token.</p>
+<pre><code>curl https://southamerica-east1-kontar-e2650.cloudfunctions.net/api/v1/ping</code></pre>
+<p>Resposta 200 (resposta real):</p>
+<pre><code>{"ok":true,"em":"2026-10-29T14:00:06.326Z"}</code></pre>
+<h3>GET /eu</h3>
+<p>Identifica o cliente dono do token.</p>
+<pre><code>curl -H "Authorization: Bearer $TOKEN" $BASE/eu</code></pre>
+<p>Resposta 200 (resposta real):</p>
+<pre><code>{"clienteId":"loja-teste","nome":"Loja Teste"}</code></pre>
+<h3>GET /balancos?loja=&amp;status=</h3>
+<p>Lista balanços do cliente. Filtros opcionais: <code>loja</code> (código da loja) e <code>status</code> (<code>aberto</code> ou <code>encerrado</code>).</p>
+<pre><code>curl -H "Authorization: Bearer $TOKEN" "$BASE/balancos?loja=1&amp;status=aberto"</code></pre>
+<p>Resposta 200:</p>
+<pre><code>{ "balancos": [ { "id": "b-1", "nome": "Balanço Geral Loja 1", "loja": "1", "status": "aberto", "origem": "erp", "...": "ver Objeto Balanço" } ] }</code></pre>
+<h3>POST /balancos</h3>
+<p>Cria um balanço de origem ERP. Idempotente por <code>refErp</code>: se já existe um balanço com esse <code>refErp</code>, devolve o existente.</p>
+<p>Corpo:</p>
+<table><thead><tr><th>Campo</th><th>Tipo</th><th>Obrigatório</th><th>Observação</th></tr></thead><tbody><tr><td><code>refErp</code></td><td>string</td><td>sim</td><td>Identificador do balanço no ERP</td></tr><tr><td><code>nome</code></td><td>string</td><td>sim</td><td></td></tr><tr><td><code>loja</code></td><td>string</td><td>sim</td><td></td></tr><tr><td><code>tipo</code></td><td>string</td><td>não</td><td><code>geral</code> (padrão) ou <code>parcial</code></td></tr><tr><td><code>sequencial</code></td><td>boolean</td><td>não</td><td>Precisa ser <code>true</code>/<code>false</code> de verdade (string ou número dá <code>400</code>). Padrão <code>false</code></td></tr><tr><td><code>enderecos</code></td><td>string[]</td><td>não</td><td>Duplicados e vazios são descartados</td></tr><tr><td><code>setores</code></td><td>string[]</td><td>não</td><td>Idem</td></tr></tbody></table>
+<pre><code>curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"refErp":"BAL-1001","nome":"Balanço Geral Loja 1","loja":"1","tipo":"geral","sequencial":false,"enderecos":["C01","C02"]}' \
+  $BASE/balancos</code></pre>
+<p>Respostas: <code>201</code> com o Objeto Balanço (criado agora), <code>200</code> com o Objeto Balanço (já existia), <code>400 balanco_invalido</code>.</p>
+<h3>GET /balancos/{id}</h3>
+<p>Devolve o Objeto Balanço, com <code>totais.bipagens</code> preenchido. <code>404 nao_encontrado</code> se não existir.</p>
+<pre><code>curl -H "Authorization: Bearer $TOKEN" $BASE/balancos/b-1</code></pre>
+<h3>PATCH /balancos/{id}</h3>
+<p>Altera um balanço. Só vale para <code>origem: "erp"</code> e <code>status: "aberto"</code>; caso contrário <code>409 nao_editavel</code>.</p>
+<p>Corpo (informe ao menos um): <code>enderecos</code> (string[]), <code>setores</code> (string[]), <code>sequencial</code> (boolean), <code>nome</code> (string não vazia).</p>
+<ul><li><code>enderecos</code> substitui a lista. Endereço que já recebeu bipagem não pode ser removido: <code>409 endereco_em_uso</code> (a mensagem lista os endereços).</li><li><code>setores</code> só pode crescer: omitir um setor existente dá <code>409 setor_em_uso</code>. Com setores informados o balanço passa a organizar por setores e endereços.</li><li><code>sequencial</code> precisa ser boolean, senão <code>400 patch_invalido</code>.</li></ul>
+<pre><code>curl -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"enderecos":["C01","C02","C03"]}' $BASE/balancos/b-1</code></pre>
+<p>Resposta 200: Objeto Balanço atualizado.</p>
+<h3>PUT /balancos/{id}/catalogo</h3>
+<p>Envia o catálogo (itens com estoque, custo e venda) usado na contagem. Substitui o catálogo anterior. <code>409 balanco_encerrado</code> se o balanço está encerrado.</p>
+<p>Corpo:</p>
+<pre><code>{
+  "itens": [
+    { "codigo": "1001", "ean": "7891000100103", "descricao": "ARROZ 5KG", "un": "un", "estoque": 10, "custo": 21.5, "venda": 29.9 }
+  ]
+}</code></pre>
+<table><thead><tr><th>Campo do item</th><th>Observação</th></tr></thead><tbody><tr><td><code>codigo</code> / <code>ean</code></td><td>Ao menos um é obrigatório (<code>400 catalogo_invalido</code> indicando o número do item)</td></tr><tr><td><code>descricao</code></td><td>Cortada em 120 caracteres</td></tr><tr><td><code>un</code></td><td>Convertida para maiúsculas</td></tr><tr><td><code>estoque</code>, <code>custo</code>, <code>venda</code></td><td>Opcionais. Devem ser números JSON ou strings com vírgula decimal sem separador de milhar (ex.: <code>4.10</code> ou <code>"4,10"</code>); <code>"1.234,56"</code> NÃO é aceito</td></tr></tbody></table>
+<p>Limites: até <b>5.000 itens por chamada</b>; <code>itens</code> vazio é rejeitado.</p>
+<p><b>Chamada única</b> (até 5.000 itens):</p>
+<pre><code>curl -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d @catalogo.json $BASE/balancos/b-1/catalogo</code></pre>
+<p>Resposta 200:</p>
+<pre><code>{ "itens": 1, "blocos": 1, "hash": "3f5a...e1", "inalterado": false }</code></pre>
+<p><b>Idempotência:</b> o catálogo é comparado por hash do conteúdo. Reenviar o mesmo catálogo devolve <code>200</code> com <code>"inalterado": true</code> e não regrava nada.</p>
+<p><b>Em partes</b> (catálogos maiores que 5.000 itens): envie <code>parte</code> e <code>total</code> no corpo, ambos inteiros de 1 a 100, com <code>parte &lt;= total</code> (senão <code>400 parte_invalida</code>). Cada parte tem no máximo 2.000 itens (acima disso, <code>400 catalogo_invalido</code>).</p>
+<ul><li>Partes <code>1..total-1</code>: resposta <code>202</code> <code>{ "parte": 1, "total": 3, "aguardando": true }</code>. O catálogo ainda não foi alterado.</li><li>Última parte (<code>parte == total</code>): o servidor confere que existem exatamente as partes <code>1..total</code>, todas com o mesmo <code>total</code>. Se sim, junta tudo na ordem das partes e responde <code>200</code> como na chamada única. Se não, <code>409 partes_incompletas</code>: reenvie a partir da parte 1.</li><li>Reenviar uma parte já enviada a substitui. A parte 1 apaga qualquer envio anterior em andamento; no <code>409 partes_incompletas</code> as partes guardadas são descartadas e o envio recomeça da parte 1.</li></ul>
+<pre><code>curl -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"parte":1,"total":3,"itens":[ ... ]}' $BASE/balancos/b-1/catalogo</code></pre>
+<h3>GET /balancos/{id}/contagem?porEndereco=1</h3>
+<p>Devolve a contagem final. Só existe quando o balanço está <code>encerrado</code>; aberto dá <code>409 balanco_aberto</code>. O parâmetro <code>porEndereco=1</code> é opcional.</p>
+<pre><code>curl -H "Authorization: Bearer $TOKEN" "$BASE/balancos/b-1/contagem?porEndereco=1"</code></pre>
+<p>Resposta 200:</p>
+<pre><code>{
+  "itens": [
+    { "codigo": "1", "ean": "", "descricao": "A", "un": "UN", "quantidade": 10, "estoque": 10, "diferenca": 0, "naoCadastrado": false }
+  ],
+  "totais": { "itens": 1, "unidades": 10, "naoCadastrados": 0 },
+  "porEndereco": [
+    { "endereco": "C01", "itens": [ { "codigo": "1", "ean": "", "quantidade": 10 } ] }
+  ],
+  "balancoId": "b-1",
+  "loja": "1",
+  "encerradoEm": "2026-10-29T18:00:00.000Z"
+}</code></pre>
+<ul><li><code>quantidade</code> é o contado; <code>estoque</code> vem do catálogo; <code>diferenca</code> = contado - estoque.</li><li><code>naoCadastrado: true</code> indica produto bipado que não está no catálogo (<code>descricao</code> vem vazia).</li><li><code>porEndereco</code> só aparece com <code>porEndereco=1</code>. Ele <b>exclui as correções</b> (<code>_CORRECAO</code>) feitas na auditoria, portanto a soma por endereço de um produto pode ser menor que a <code>quantidade</code> total dele em <code>itens</code>. A quantidade oficial é sempre a de <code>itens</code>.</li></ul>
+<h3>POST /balancos/{id}/contagem/confirmar</h3>
+<p>O ERP avisa que recebeu a contagem. Sem corpo. <code>409 balanco_aberto</code> se o balanço não está encerrado.</p>
+<pre><code>curl -X POST -H "Authorization: Bearer $TOKEN" $BASE/balancos/b-1/contagem/confirmar</code></pre>
+<p>Resposta 200:</p>
+<pre><code>{ "ok": true, "contagemRecebidaEm": "2026-10-29T18:05:00.000Z" }</code></pre>
+<h3>PATCH /balancos/{id}/erp</h3>
+<p>O ERP informa seu estado de processamento, que aparece no balanço (bloco <code>erp</code>). Informe ao menos um campo, senão <code>400 patch_invalido</code>:</p>
+<table><thead><tr><th>Campo</th><th>Efeito</th></tr></thead><tbody><tr><td><code>erro</code></td><td>string: registra a mensagem de erro (até 500 caracteres) e a hora; <code>""</code> ou <code>null</code> limpa o erro</td></tr><tr><td><code>contagemEnviadaEm</code></td><td><code>true</code>: registra que o ERP gravou a contagem no seu lado</td></tr><tr><td><code>pedirCatalogo</code></td><td><code>false</code>: baixa o pedido de catálogo feito pelo usuário no Kontar</td></tr></tbody></table>
+<pre><code>curl -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"contagemEnviadaEm":true}' $BASE/balancos/b-1/erp</code></pre>
+<p>Resposta 200: <code>{ "ok": true }</code></p>
+<h2>O que o ERP precisa implementar</h2>
+<p>Fluxo mínimo, com o balanço criado no Kontar (origem Kontar):</p>
+<ol><li><b>Listar balanços abertos da loja:</b> <code>GET /balancos?loja=&lt;loja&gt;&amp;status=aberto</code>. Repita periodicamente (por exemplo, a cada minuto).</li><li><b>Enviar o catálogo</b> de cada balanço aberto: <code>PUT /balancos/{id}/catalogo</code> com os itens e o estoque/custo/venda da loja. Em até 5.000 itens, uma chamada; acima disso, em partes. Reenviar é seguro (<code>inalterado: true</code>).</li><li><b>Consultar o status até <code>encerrado</code>:</b> <code>GET /balancos/{id}</code> e observar <code>status</code>.</li><li><b>Buscar a contagem e confirmar:</b> <code>GET /balancos/{id}/contagem</code> (com <code>?porEndereco=1</code> se o ERP aceitar local), gravar no ERP, depois <code>POST /balancos/{id}/contagem/confirmar</code>. Opcionalmente <code>PATCH /balancos/{id}/erp</code> com <code>contagemEnviadaEm: true</code> ou <code>erro</code>.</li></ol>
+<p>Alternativa, com o balanço nascendo no ERP: no lugar do passo 1, o ERP cria o balanço com <code>POST /balancos</code> informando <code>refErp</code> (idempotente, pode repetir sem duplicar) e mantém endereços/setores atualizados com <code>PATCH /balancos/{id}</code>. Os passos 2 a 4 são iguais.</p>
+<h2>Perguntas ao ERP parceiro</h2>
+<ol><li>Em qual tabela fica o balanço aberto (número, loja, data, status, tipo geral/parcial, sequencial)? Existe tabela de endereços do balanço e recorte de itens para o balanço parcial?</li><li>Qual tabela e layout o ERP lê como contagem de inventário (nome, colunas obrigatórias, campo de status/lido, se aceita local/endereço)?</li><li>Qual coluna de estoque por loja na tabela de itens, e quais colunas de custo e venda por loja?</li><li>Qual usuário MySQL (e permissões) o conector pode usar para ler essas tabelas e gravar a contagem?</li></ol>
+<p>Se a pergunta 1 não tiver resposta (não existe balanço aberto no ERP), todo balanço nasce no Kontar e o ERP apenas envia o catálogo.</p>
+<p style="margin-top:40px;font-size:12px;color:#777">Kontar · gerado automaticamente a partir de docs/api.md</p></body></html>

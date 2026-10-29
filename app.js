@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '8';
+var BUILD = '9';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -1031,6 +1031,12 @@ function renderIntegracoes() {
       return '<tr><td>' + esc(em) + '</td><td style="font-family:monospace">' + esc(l.rota) + '</td><td style="color:' + (l.status < 400 ? 'var(--g)' : 'var(--r)') + ';font-weight:700">' + esc(l.status) + '</td><td>' + esc(l.ms) + '</td><td>' + esc(l.resumo || '') + '</td></tr>';
     }).join('');
   }).catch(function(e){ if (tb) tb.innerHTML = '<tr><td colspan="5" style="color:var(--r)">Erro ao ler o log: ' + esc(e.message) + '</td></tr>'; });
+}
+// Copia texto pro clipboard com feedback no botão (fallback pra navegador sem clipboard API)
+function copiarTexto(txt, btn) {
+  function ok(){ if (btn) { var t=btn.textContent; btn.textContent='Copiado!'; setTimeout(function(){ btn.textContent=t; },1500); } }
+  if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(ok).catch(function(){ showToast('Não foi possível copiar', 3000); }); return; }
+  try { var ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); ok(); } catch(e) { showToast('Não foi possível copiar', 3000); }
 }
 function gerarTokenIntegracao() {
   var cid = S.currentUser && S.currentUser.clienteId; if (!cid) return;
