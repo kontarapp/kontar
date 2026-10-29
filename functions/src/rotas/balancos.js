@@ -1,5 +1,6 @@
 const express = require('express');
-const { formatarBalanco } = require('../../lib/formatar');
+const { formatarBalanco, iso } = require('../../lib/formatar');
+const { montarContagem } = require('../../lib/contagem');
 const { validarItens, hashItens, paraBlocos, TAM_BLOCO } = require('../../lib/catalogo');
 function rotasBalancos(repo) {
   const r = express.Router();
@@ -46,6 +47,16 @@ function rotasBalancos(repo) {
     if (emPartes) await repo.limparPartesCatalogo(b.id);
     res.locals.resumo = itens.length + ' itens';
     res.json({ itens: itens.length, blocos: blocos.length, hash, inalterado: false });
+  } catch (e) { next(e); } });
+  r.get('/:id/contagem', async (req, res, next) => { try {
+    const b = await repo.obterBalanco(req.cliente.id, req.params.id);
+    if (!b) return res.status(404).json({ erro: 'nao_encontrado', mensagem: 'Balanço não encontrado' });
+    if (b.status !== 'encerrado') return res.status(409).json({ erro: 'balanco_aberto', mensagem: 'Contagem só disponível para balanço encerrado' });
+    const [cat, bips] = await Promise.all([repo.lerCatalogo(b.id), repo.lerBipagens(b.id)]);
+    const out = montarContagem(cat, bips, b.resolucoes || {}, { porEndereco: req.query.porEndereco === '1' });
+    out.balancoId = b.id; out.loja = b.loja || ''; out.encerradoEm = iso(b.encerradoEm);
+    res.locals.resumo = out.totais.itens + ' itens';
+    res.json(out);
   } catch (e) { next(e); } });
   return r;
 }

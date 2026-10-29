@@ -1,5 +1,6 @@
 // functions/src/repo.js (cresce nas tasks seguintes)
 const { FieldValue } = require('firebase-admin/firestore');
+const InvCore = require('../lib/inv-bip-core.js');
 function criarRepo(db) {
   return {
     db,
@@ -51,6 +52,15 @@ function criarRepo(db) {
     async limparPartesCatalogo(invId) {
       const s = await db.collection('inv_inventarios').doc(invId).collection('catalogo_partes').get();
       const b = db.batch(); s.docs.forEach(d => b.delete(d.ref)); await b.commit();
+    },
+    async lerCatalogo(invId) {
+      const s = await db.collection('inv_catalogo_blocos').where('invId', '==', invId).get();
+      let itens = []; s.docs.sort((a, b) => (a.data().n || 0) - (b.data().n || 0)).forEach(d => { itens = itens.concat(d.data().itens || []); });
+      return InvCore.criarCatalogo(itens);
+    },
+    async lerBipagens(invId) {
+      const s = await db.collection('inv_bipagens').where('invId', '==', invId).get();
+      return s.docs.map(d => d.data());
     }
   };
 }
