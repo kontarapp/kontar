@@ -1,4 +1,4 @@
-# Cria, para ou remove a tarefa do Windows que mantém o Conector Kontar rodando (usado pelo instalador).
+﻿# Cria, para ou remove a tarefa do Windows que mantém o Conector Kontar rodando (usado pelo instalador).
 #   tarefa.ps1 -Acao Instalar -Node <node.exe> -Index <index.js> -Config <conector.json>
 #   tarefa.ps1 -Acao Parar   |   tarefa.ps1 -Acao Remover
 param([ValidateSet('Instalar', 'Parar', 'Remover')][string]$Acao, [string]$Node, [string]$Index, [string]$Config)
