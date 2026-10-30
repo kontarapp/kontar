@@ -1,0 +1,17 @@
+{
+  "kontar": {
+    "url": "https://southamerica-east1-kontar-e2650.cloudfunctions.net/api/v1",
+    "token": "COLE_AQUI_O_TOKEN_DA_ABA_INTEGRACOES"
+  },
+  "erp": "dlinks",
+  "mysql": { "host": "127.0.0.1", "port": 3306, "user": "kontar", "password": "", "database": "central" },
+  "lojas": [1, 2, 3],
+  "dlinks": {
+    "statusFechados": [2, 3],
+    "desdeNIven": 0
+  },
+  "enderecosPadrao": "1-10",
+  "porEndereco": false,
+  "app": 0,
+  "intervaloSeg": 60
+}

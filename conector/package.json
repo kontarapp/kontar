@@ -1,0 +1,16 @@
+{
+  "name": "kontar-conector",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Conector Kontar <-> ERP (Dlinks): leva o inventário aberto no ERP pro Kontar e devolve a contagem.",
+  "main": "index.js",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node index.js",
+    "uma-vez": "node index.js --uma-vez",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "mysql2": "^3.11.0"
+  }
+}

@@ -18,7 +18,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=13"/>
+<link rel="stylesheet" href="style.css?v=14"/>
 </head>
 <body>
 
@@ -160,9 +160,15 @@
           <p style="font-size:12.5px;color:var(--t3);margin:10px 0 0">Alternativa: o ERP cria o balanço (<code>POST /balancos</code> com <code>refErp</code>) e o Kontar espelha. Tudo detalhado na documentação.</p>
         </div>
         <div class="card" style="max-width:720px;margin-top:16px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="font-weight:700">Conector ERP (instalador)</div><span class="tg tg-am">Em desenvolvimento</span></div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="font-weight:700">Conector ERP (instalador)</div><span class="tg tg-ok">Disponível</span></div>
           <p style="font-size:13px;color:var(--t2);margin:0 0 8px">Programa instalado no servidor central do cliente, pra ERPs que não chamam a API sozinhos. Ele lê o cadastro e o estoque do banco do ERP, envia o catálogo pro balanço e grava a contagem de volta no ERP quando o balanço encerra.</p>
-          <p style="font-size:12.5px;color:var(--t3);margin:0">O instalador vai pedir: o token desta tela, o endereço e usuário do banco do ERP e o mapa das lojas. Quando estiver pronto, o download aparece aqui.</p>
+          <ol style="font-size:13px;color:var(--t2);margin:0 0 12px;padding-left:20px;line-height:1.6">
+            <li>Baixe o conector e descompacte numa pasta do servidor central.</li>
+            <li>Botão direito em <code>instalar.ps1</code> &gt; <b>Executar com o PowerShell</b>, como Administrador.</li>
+            <li>Informe o token desta tela, o servidor, usuário e senha do banco do ERP e as lojas.</li>
+          </ol>
+          <p style="font-size:12.5px;color:var(--t3);margin:0 0 12px">Daí em diante, inventário aberto no ERP aparece aqui com o catálogo da loja, e a contagem volta pro ERP quando o balanço é encerrado. O instalador testa tudo antes de ativar e baixa o que faltar no servidor.</p>
+          <a class="btn btn-p" href="https://github.com/kontarapp/kontar/releases/latest/download/kontar-conector.zip" rel="noopener">&#8595; Baixar conector (.zip)</a>
         </div>
         <div class="card" style="margin-top:16px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-weight:700">Últimas chamadas</div><button class="btn btn-sm" onclick="renderIntegracoes()">&#8635; Atualizar</button></div>
@@ -672,7 +678,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="lib/inv-bip-core.js?v=13"></script>
+<script src="lib/inv-bip-core.js?v=14"></script>
 <script>
 // Painel de erros na tela (?debug=1): iPhone/Chrome iOS nao tem console acessivel na loja.
 (function(){
@@ -697,7 +703,7 @@
   setInterval(function(){ if(box) log('INFO','vivo, tela='+(document.querySelector('.page.on,.view.on')||{}).id); },15000);
 })();
 </script>
-<script src="app.js?v=13" defer></script>
+<script src="app.js?v=14" defer></script>
 
 </body>
 </html>

@@ -6,3 +6,5 @@ firebase-service-account.json
 testes/
 .superpowers/
 functions/node_modules
+conector/conector.json
+conector/logs/
