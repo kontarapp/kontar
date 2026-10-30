@@ -1,6 +1,6 @@
 // Kontar — Service Worker
 // Atualize CACHE_NAME e os ?v= sempre que publicar novos arquivos
-var CACHE_NAME = 'kontar-v15';
+var CACHE_NAME = 'kontar-v16';
 
 // Arquivos críticos: sempre buscados da rede (nunca do cache)
 var NETWORK_FIRST = ['app.js', 'index.html', 'firebase-config.js'];
@@ -8,10 +8,10 @@ var NETWORK_FIRST = ['app.js', 'index.html', 'firebase-config.js'];
 var SHELL_ASSETS = [
   './',
   './index.html',
-  './app.js?v=15',
-  './style.css?v=15',
+  './app.js?v=16',
+  './style.css?v=16',
   './firebase-config.js',
-  './lib/inv-bip-core.js?v=15',
+  './lib/inv-bip-core.js?v=16',
   './logo.png',
   './logo-light.png',
   './icon-192.png',

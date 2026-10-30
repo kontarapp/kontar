@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '15';
+var BUILD = '16';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -1046,7 +1046,9 @@ function gerarTokenIntegracao() {
   hashPassword(token).then(function(hash){
     return db.collection('clientes').doc(cid).set({ integracao: { tokenHash: hash, geradoEm: firebase.firestore.FieldValue.serverTimestamp(), geradoPor: S.currentUser.nome || S.currentUser.id } }, { merge: true });
   }).then(function(){
-    var el = document.getElementById('integ-token-novo'); if (el) { el.style.display = 'block'; el.innerHTML = '<div style="font-family:inherit;font-weight:700;margin-bottom:6px">Copie agora. Este token não será mostrado de novo.</div>' + esc(token); }
+    var el = document.getElementById('integ-token-novo'); if (el) { el.style.display = 'block'; el.innerHTML = '<div style="font-family:inherit;font-weight:700;margin-bottom:8px">Copie agora. Este token não será mostrado de novo.</div>' +
+      '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span id="integ-token-valor" style="word-break:break-all;flex:1;min-width:200px">' + esc(token) + '</span>' +
+      '<button type="button" id="integ-token-copiar" class="btn btn-p btn-sm" style="font-family:inherit" onclick="_copiarTokenInteg()">&#10697; Copiar token</button></div>'; }
     renderIntegracoes();
   }).catch(function(e){ showToast('Erro ao gerar token: ' + e.message, 6000); });
 }
@@ -5668,4 +5670,17 @@ function confirmarRemoverEndereco(){
   db.collection('inv_inventarios').doc(c.invId).update(upd)
     .then(function(){ showToast('Endereço removido'); })
     .catch(function(e){ showToast('Erro: '+(e.message||'')); });
+}
+
+// Copia o token recém-gerado (Integrações). Clipboard API; sem ela (http/navegador antigo), seleciona e usa execCommand.
+function _copiarTokenInteg(){
+  var v=document.getElementById('integ-token-valor'), b=document.getElementById('integ-token-copiar'); if(!v) return;
+  var txt=v.textContent.trim();
+  var ok=function(){ if(b){ b.innerHTML='&#10003; Copiado'; setTimeout(function(){ if(b) b.innerHTML='&#10697; Copiar token'; },2500); } showToast('Token copiado'); };
+  var manual=function(){
+    try{ var r=document.createRange(); r.selectNodeContents(v); var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      if(document.execCommand('copy')){ ok(); return; } }catch(e){}
+    showToast('Não deu pra copiar sozinho: o token ficou selecionado, use Ctrl+C',4000);
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok,manual); else manual();
 }
