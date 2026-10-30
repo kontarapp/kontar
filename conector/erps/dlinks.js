@@ -55,17 +55,23 @@ function itemCatalogo(row, est) {
 //  porEndereco=false: 1 linha por produto com a quantidade oficial (End = '0', como o Dlinks grava sem local).
 //  porEndereco=true : 1 linha por produto×endereço; se a auditoria corrigiu o total, a diferença vai
 //                     numa linha extra com End = 'KONTAR' pra soma bater com a quantidade oficial.
-// Produto que não existe em itens (grupos) ou veio marcado como não cadastrado fica de fora e é devolvido em `ignorados`.
+// Só vai o que foi CONTADO (quantidade > 0): o Dlinks cuida dos zeros (geral zera o resto da loja ao fechar;
+// parcial já nasce com uma linha 0 pra cada item da lista).
+// Fica de fora (em `ignorados`, com motivo): não cadastrado no ERP, ou fora da lista do parcial (ctx.lista).
 function linhasContagem(contagem, ctx) {
   const grupos = ctx.grupos || {};
   const base = cod => ({ nLoja: ctx.nLoja, nIven: ctx.nIven, CodigoBarra: cod, CodDigitador: ctx.codDigitador, DataHora: ctx.dataHora,
     App: ctx.app || 0, Lote: 0, Backup: 0, CodGrupo: grupos[cod] || 0, seq: 0, emissornfe: 0 });
   const ignorados = [], linhas = [];
   const oficiais = new Map(); // Map mantém a ordem da contagem (objeto reordenaria códigos numéricos)
+  const lista = ctx.lista ? new Set(ctx.lista.map(String)) : null;
   (contagem.itens || []).forEach(it => {
     const cod = String(it.codigo || it.ean || '').trim();
-    if (!cod || it.naoCadastrado || !Object.prototype.hasOwnProperty.call(grupos, cod)) { ignorados.push({ codigo: cod, quantidade: it.quantidade }); return; }
-    oficiais.set(cod, r3((oficiais.get(cod) || 0) + Number(it.quantidade || 0)));
+    const q = r3(Number(it.quantidade || 0));
+    if (!(q > 0)) return; // não contado: nada a gravar
+    if (!cod || it.naoCadastrado || !Object.prototype.hasOwnProperty.call(grupos, cod)) { ignorados.push({ codigo: cod, quantidade: q, motivo: 'nao_cadastrado' }); return; }
+    if (lista && !lista.has(cod)) { ignorados.push({ codigo: cod, quantidade: q, motivo: 'fora_da_lista' }); return; }
+    oficiais.set(cod, r3((oficiais.get(cod) || 0) + q));
   });
   if (!ctx.porEndereco || !contagem.porEndereco) {
     oficiais.forEach((q, cod) => linhas.push(Object.assign(base(cod), { Qtd: q, End: '0' })));
@@ -107,14 +113,31 @@ function criarDlinks(pool, cfgDl) {
   }
   function estaFechado(inv) { return fechados.indexOf(Number(inv.Status)) >= 0; }
 
+  // Lista do parcial: ao abrir um parcial o Dlinks grava uma linha Qtd 0, sem digitador e sem coletor
+  // (CodDigitador 0, App 0), pra cada item da lista. Geral não tem essas linhas.
+  async function listaParcial(inv) {
+    if (String(inv.Tipo || '').toUpperCase() !== 'PARCIAL') return null;
+    const r = await q('SELECT DISTINCT CodigoBarra FROM inventariocontagem WHERE nIven = ? AND CodDigitador = 0 AND App = 0 AND Qtd = 0', [Number(inv.nIven)]);
+    const l = r.map(x => String(x.CodigoBarra).trim()).filter(Boolean);
+    return l.length ? l : null;
+  }
+
   async function catalogo(inv) {
     const loja = lojaValida(inv.nLoja);
     const cols = (await q('SHOW COLUMNS FROM itens')).map(c => c.Field);
     const colVenda = cols.indexOf('P' + loja) >= 0 ? 'P' + loja : null;
-    const f = filtrosParcial(inv);
-    const where = ['CodDesativado = 0'].concat(f.map(x => x.col + ' = ?'));
-    const itens = await q('SELECT CodigoBarra, Descricao, Unid, custo' + (colVenda ? ', ' + colVenda + ' venda' : '') +
-      ' FROM itens WHERE ' + where.join(' AND '), f.map(x => x.val));
+    const sel = 'SELECT CodigoBarra, Descricao, Unid, custo' + (colVenda ? ', ' + colVenda + ' venda' : '') + ' FROM itens WHERE ';
+    let itens;
+    const lista = await listaParcial(inv);
+    if (lista) {
+      // parcial: só os itens da lista do inventário (mesmo os desativados, se estiverem na lista)
+      itens = [];
+      for (let i = 0; i < lista.length; i += 1000) itens = itens.concat(await q(sel + 'CodigoBarra IN (?)', [lista.slice(i, i + 1000)]));
+    } else {
+      const f = filtrosParcial(inv);
+      const where = ['CodDesativado = 0'].concat(f.map(x => x.col + ' = ?'));
+      itens = await q(sel + where.join(' AND '), f.map(x => x.val));
+    }
     const est = {};
     // estoquen pode ter mais de uma linha por produto: vale a de maior nReg.
     for (const r of await q('SELECT CodigoBarra, Qtd, CustoMedio FROM estoquen' + loja + ' ORDER BY nReg')) est[String(r.CodigoBarra).trim()] = r;
@@ -146,8 +169,9 @@ function criarDlinks(pool, cfgDl) {
         const [rows] = await c.query('SELECT CodigoBarra, CodGrupo FROM itens WHERE CodigoBarra IN (?)', [cods.slice(i, i + 1000)]);
         rows.forEach(r => { grupos[String(r.CodigoBarra).trim()] = Number(r.CodGrupo) || 0; });
       }
+      const lista = await listaParcial(atual);
       const { linhas, ignorados } = linhasContagem(contagem, { nLoja, nIven, codDigitador: codDig, dataHora: dataHoraBR(opts.agora || new Date()),
-        app: opts.app || 0, porEndereco: !!opts.porEndereco, grupos });
+        app: opts.app || 0, porEndereco: !!opts.porEndereco, grupos, lista });
       for (let i = 0; i < linhas.length; i += 500) {
         const lote = linhas.slice(i, i + 500);
         await c.query('INSERT INTO inventariocontagem (' + COLS_CONTAGEM.join(', ') + ') VALUES ?', [lote.map(l => COLS_CONTAGEM.map(k => l[k]))]);
@@ -175,7 +199,7 @@ function criarDlinks(pool, cfgDl) {
 
   async function testar() { const r = await q('SELECT COUNT(*) n FROM inventario'); return { inventarios: Number(r[0].n) }; }
 
-  return { listarAbertos, inventario, estaFechado, catalogo, gravarContagem, testar, listarLojas, maiorInventario };
+  return { listarAbertos, inventario, estaFechado, catalogo, gravarContagem, testar, listarLojas, maiorInventario, listaParcial };
 }
 
 module.exports = { criarDlinks, itemCatalogo, linhasContagem, filtrosParcial, dataHoraBR, num, NOME_DIGITADOR, COLS_CONTAGEM };

@@ -21,8 +21,12 @@ function tipoKontar(tipoErp) { return String(tipoErp || '').toUpperCase() === 'P
 function nomeBalanco(inv) { return (String(inv.Nome || '').trim() || 'Inventário') + ' · ERP ' + inv.nIven; }
 function resumoIgnorados(ign) {
   if (!ign || !ign.length) return null;
-  const lista = ign.slice(0, 15).map(i => i.codigo || '(sem código)').join(', ');
-  return 'Gravado no ERP, mas ' + ign.length + ' código(s) não cadastrado(s) ficaram de fora: ' + lista + (ign.length > 15 ? '…' : '');
+  const cods = l => l.slice(0, 12).map(i => i.codigo || '(sem código)').join(', ') + (l.length > 12 ? '…' : '');
+  const fora = ign.filter(i => i.motivo === 'fora_da_lista'), nc = ign.filter(i => i.motivo !== 'fora_da_lista');
+  const partes = [];
+  if (fora.length) partes.push(fora.length + ' fora da lista do parcial (' + cods(fora) + ')');
+  if (nc.length) partes.push(nc.length + ' não cadastrado(s) no ERP (' + cods(nc) + ')');
+  return 'Gravado no ERP, mas ficaram de fora: ' + partes.join('; ');
 }
 
 async function rodarCiclo(deps) {

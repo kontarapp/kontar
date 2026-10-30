@@ -451,7 +451,8 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var Codigo: Integer;
 begin
   // Atualização: para o conector que está rodando pra liberar os arquivos.
-  RodarOculto(PowerShell(), '-NoProfile -ExecutionPolicy Bypass -Command "Stop-ScheduledTask -TaskName KontarConector -ErrorAction SilentlyContinue; ' +
+  RodarOculto(ExpandConstant('{sys}\schtasks.exe'), '/End /TN KontarConector', Codigo);
+  RodarOculto(PowerShell(), '-NoProfile -ExecutionPolicy Bypass -Command "' +
     'Get-CimInstance Win32_Process -Filter ""Name=''node.exe''"" | Where-Object { $_.CommandLine -like ''*Kontar Conector*index.js*'' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"', Codigo);
   Result := '';
 end;
@@ -493,19 +494,35 @@ begin
 #endif
 end;
 
+// Última linha "ERRO:" do registro da instalação (gravado pelo tarefa.ps1).
+function UltimoErro(Arq: String): String;
+var Linhas: TArrayOfString; I, P: Integer;
+begin
+  Result := '';
+  if LoadStringsFromFile(Arq, Linhas) then
+    for I := GetArrayLength(Linhas) - 1 downto 0 do begin
+      P := Pos('ERRO:', Linhas[I]);
+      if P > 0 then begin Result := Trim(Copy(Linhas[I], P + 5, 1000)); Exit; end;
+    end;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
-var Codigo: Integer;
+var Codigo: Integer; Log, Motivo: String;
 begin
   if CurStep = ssPostInstall then begin
     GravarConfiguracao();
 #ifdef TESTE
     Exit;
 #endif
+    Log := PastaCfg() + '\logs\instalacao.log';
     if not RodarOculto(PowerShell(), '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\app\tarefa.ps1') +
       '" -Acao Instalar -Node "' + ExpandConstant('{app}\node\node.exe') + '" -Index "' + ExpandConstant('{app}\app\index.js') +
-      '" -Config "' + ArqCfg() + '"', Codigo) or (Codigo <> 0) then
-      MsgBox('Os arquivos foram instalados, mas não consegui ativar a tarefa do Windows "KontarConector" (código ' + IntToStr(Codigo) +
-        '). Rode o instalador de novo como Administrador.', mbError, MB_OK);
+      '" -Config "' + ArqCfg() + '" -Log "' + Log + '"', Codigo) or (Codigo <> 0) then begin
+      Motivo := UltimoErro(Log);
+      if Motivo = '' then Motivo := 'código ' + IntToStr(Codigo) + ', sem detalhe no registro';
+      MsgBox('Os arquivos foram instalados, mas não consegui ativar a tarefa do Windows "KontarConector".' + #13#10#13#10 +
+        'Motivo: ' + Motivo + #13#10#13#10 + 'Registro completo: ' + Log, mbError, MB_OK);
+    end;
   end;
 end;
 

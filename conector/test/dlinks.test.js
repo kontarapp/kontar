@@ -61,3 +61,17 @@ test('linhasContagem por endereço: soma bate com a oficial (correção da audit
   assert.strictEqual(Math.round(soma('1465') * 1000) / 1000, 1.25);
   assert.strictEqual(soma('18'), 20);
 });
+
+test('linhasContagem: produto não contado (0) não vai pro ERP — o Dlinks cuida dos zeros', () => {
+  const c = { itens: [{ codigo: '1465', quantidade: 0 }, { codigo: '18', quantidade: 2 }] };
+  const { linhas, ignorados } = linhasContagem(c, ctx);
+  assert.deepStrictEqual(linhas.map(l => [l.CodigoBarra, l.Qtd]), [['18', 2]]);
+  assert.deepStrictEqual(ignorados, []);
+});
+
+test('linhasContagem parcial: só itens da lista; bipado fora da lista fica de fora com motivo', () => {
+  const c = { itens: [{ codigo: '1465', quantidade: 1.5 }, { codigo: '18', quantidade: 4 }, { codigo: '999', quantidade: 1, naoCadastrado: true }] };
+  const { linhas, ignorados } = linhasContagem(c, Object.assign({}, ctx, { lista: ['1465', '7891000100103'] }));
+  assert.deepStrictEqual(linhas.map(l => [l.CodigoBarra, l.Qtd]), [['1465', 1.5]]);
+  assert.deepStrictEqual(ignorados.map(i => [i.codigo, i.motivo]), [['18', 'fora_da_lista'], ['999', 'nao_cadastrado']]);
+});

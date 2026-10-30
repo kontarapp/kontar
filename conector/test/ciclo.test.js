@@ -99,7 +99,7 @@ test('não cadastrados ficam de fora e aparecem como aviso no balanço', async (
   await rodarCiclo({ api, erp, cfg: {}, log: logMudo });
   const est = api.chamadas.find(c => c[0] === 'estado')[2];
   assert.strictEqual(est.contagemEnviadaEm, true);
-  assert.match(est.erro, /1 código\(s\) não cadastrado\(s\).*999/);
+  assert.match(est.erro, /1 não cadastrado\(s\) no ERP \(999\)/);
 });
 
 test('api: catálogo acima de 5.000 itens vai em partes de 2.000', async () => {
@@ -122,4 +122,11 @@ test('api: falha de rede tenta de novo e segue; 4xx não repete', async () => {
   let m = 0;
   const api2 = criarApi({ url: 'https://x/api/v1', token: 't' }, { espera: async () => {}, fetch: async () => { m++; return { ok: false, status: 401, json: async () => ({ erro: 'nao_autorizado', mensagem: 'x' }) }; } });
   await assert.rejects(api2.eu(), e => e.status === 401); assert.strictEqual(m, 1);
+});
+
+test('aviso separa fora da lista do parcial e não cadastrados', () => {
+  const { resumoIgnorados } = require('../lib/ciclo');
+  assert.strictEqual(resumoIgnorados([]), null);
+  assert.strictEqual(resumoIgnorados([{ codigo: '18', motivo: 'fora_da_lista' }, { codigo: '999', motivo: 'nao_cadastrado' }]),
+    'Gravado no ERP, mas ficaram de fora: 1 fora da lista do parcial (18); 1 não cadastrado(s) no ERP (999)');
 });
