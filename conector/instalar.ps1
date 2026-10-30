@@ -8,7 +8,8 @@ param(
   [string]$Pasta = 'C:\KontarConector',
   [string]$Token, [string]$MysqlHost, [int]$MysqlPorta = 3306, [string]$MysqlUsuario, [string]$MysqlSenha,
   [string]$MysqlBanco = 'central', [string]$Lojas, [int]$DesdeInventario = -1, [string]$Enderecos = '1-10',
-  [switch]$SemTarefa
+  [switch]$SemTarefa,
+  [switch]$Recriar   # regrava conector.json com os parâmetros informados (usado pela janela do instalador)
 )
 $ErrorActionPreference = 'Stop'
 $TAREFA = 'KontarConector'
@@ -22,11 +23,17 @@ function Perguntar($texto, $padrao) {
 $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $admin -and -not $SemTarefa) { Write-Host 'Rode este instalador como Administrador (ou use -SemTarefa para só copiar e testar).' -ForegroundColor Red; exit 1 }
 
+if (-not $SemTarefa -and (Get-ScheduledTask -TaskName $TAREFA -ErrorAction SilentlyContinue)) {
+  Passo "Parando a tarefa '$TAREFA' que já estava instalada"
+  Stop-ScheduledTask -TaskName $TAREFA -ErrorAction SilentlyContinue
+  Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*$Pasta*index.js*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+}
+
 Passo "Copiando arquivos para $Pasta"
 $origem = Split-Path -Parent $MyInvocation.MyCommand.Path
 New-Item -ItemType Directory -Force -Path $Pasta | Out-Null
 if ((Resolve-Path $origem).Path -ne (Resolve-Path $Pasta).Path) {
-  Get-ChildItem -Path $origem -Force | Where-Object { $_.Name -notin @('conector.json', 'logs') } | ForEach-Object {
+  Get-ChildItem -Path $origem -Force | Where-Object { $_.Name -notin @('conector.json', 'logs', 'Instalar.cmd', 'instalador-gui.ps1') } | ForEach-Object {
     Copy-Item -Path $_.FullName -Destination $Pasta -Recurse -Force
   }
 }
@@ -51,6 +58,7 @@ if (-not $node) {
 Write-Host "Usando $node ($(& $node -v))"
 
 $cfgArq = Join-Path $Pasta 'conector.json'
+if ($Recriar -and (Test-Path $cfgArq)) { Remove-Item $cfgArq -Force }
 if (-not (Test-Path $cfgArq)) {
   Passo 'Configuração (os dados ficam só neste servidor, em conector.json)'
   if (-not $Token) { $Token = Perguntar 'Token do Kontar (app Kontar > Integrações > Gerar novo token)' '' }

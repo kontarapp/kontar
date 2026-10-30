@@ -10,9 +10,13 @@ ERP suportado: **Dlinks** (MySQL `central`).
 
 ## Instalar
 
-1. Descompacte o arquivo numa pasta qualquer do servidor central.
-2. Clique com o botão direito em `instalar.ps1` e escolha **Executar com o PowerShell** (como Administrador).
-3. Responda: token do Kontar (aba **Integrações** do app), servidor, porta, usuário e senha do MySQL do ERP e as lojas.
+1. Abra o **KontarConectorSetup.exe** no servidor central (ou, no zip, clique duas vezes em **Instalar.cmd**). O Windows pede permissão de Administrador.
+2. Na janela, preencha o token do Kontar (aba **Integrações** do app), servidor, porta, usuário e senha do MySQL do ERP e as lojas.
+3. Clique em **Testar conexão** e depois em **Instalar**.
+
+Se o Windows mostrar "O Windows protegeu o computador", clique em **Mais informações** > **Executar assim mesmo** (o instalador ainda não é assinado).
+
+Sem janela (linha de comando, como Administrador): `powershell -ExecutionPolicy Bypass -File instalar.ps1` e responda as perguntas.
 
 O instalador:
 

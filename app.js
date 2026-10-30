@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '14';
+var BUILD = '15';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
