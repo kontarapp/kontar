@@ -14,9 +14,17 @@ function Reg($m) {
   try { New-Item -ItemType Directory -Force (Split-Path -Parent $Log) | Out-Null; Add-Content -Path $Log -Value $linha -Encoding UTF8 } catch {}
   Write-Output $linha
 }
-function Existe { & $schtasks /Query /TN $TAREFA *> $null; return ($LASTEXITCODE -eq 0) }
+# Chama o schtasks sem deixar o texto que ele escreve no stderr virar exceção (no PowerShell 5.1, com
+# ErrorActionPreference=Stop, "ERRO: O sistema não pode encontrar o arquivo especificado." do /Query derrubava tudo).
+# Vale só o código de saída.
+function Sch {
+  $ErrorActionPreference = 'Continue'
+  $saida = (& $schtasks @args 2>&1 | ForEach-Object { "$_" }) -join ' '
+  [pscustomobject]@{ Codigo = $LASTEXITCODE; Saida = $saida.Trim() }
+}
+function Existe { return ((Sch /Query /TN $TAREFA).Codigo -eq 0) }
 function Parar {
-  if (Existe) { & $schtasks /End /TN $TAREFA *> $null; Reg "tarefa parada (schtasks /End: $LASTEXITCODE)" }
+  if (Existe) { $r = Sch /End /TN $TAREFA; Reg "tarefa parada (schtasks /End: $($r.Codigo))" }
   # Mata o node do conector (pra liberar os arquivos na atualização). Se o CIM não estiver disponível, segue.
   try {
     Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction Stop |
@@ -31,7 +39,7 @@ try {
   if ($Acao -eq 'Parar') { Parar; Reg 'ok'; exit 0 }
   if ($Acao -eq 'Remover') {
     Parar
-    if (Existe) { & $schtasks /Delete /TN $TAREFA /F *> $null; Reg "tarefa removida (schtasks /Delete: $LASTEXITCODE)" }
+    if (Existe) { $r = Sch /Delete /TN $TAREFA /F; Reg "tarefa removida (schtasks /Delete: $($r.Codigo))" }
     Reg 'ok'; exit 0
   }
   foreach ($a in @(@('Node', $Node), @('Index', $Index), @('Config', $Config))) {
@@ -74,14 +82,13 @@ try {
 "@
   $arqXml = Join-Path $env:TEMP ('kontar-tarefa-' + [guid]::NewGuid().ToString('N') + '.xml')
   [IO.File]::WriteAllText($arqXml, $xml, [Text.Encoding]::Unicode)
-  $saida = & $schtasks /Create /TN $TAREFA /XML $arqXml /F 2>&1 | Out-String
-  $cod = $LASTEXITCODE
+  $r = Sch /Create /TN $TAREFA /XML $arqXml /F
   Remove-Item $arqXml -Force -ErrorAction SilentlyContinue
-  Reg ("schtasks /Create -> $cod " + $saida.Trim())
-  if ($cod -ne 0) { throw "schtasks /Create falhou ($cod): $($saida.Trim())" }
-  $saida = & $schtasks /Run /TN $TAREFA 2>&1 | Out-String
-  Reg ("schtasks /Run -> $LASTEXITCODE " + $saida.Trim())
-  if ($LASTEXITCODE -ne 0) { throw "a tarefa foi criada mas não iniciou: $($saida.Trim())" }
+  Reg ("schtasks /Create -> " + $r.Codigo + ' ' + $r.Saida)
+  if ($r.Codigo -ne 0) { throw "schtasks /Create falhou ($($r.Codigo)): $($r.Saida)" }
+  $r = Sch /Run /TN $TAREFA
+  Reg ("schtasks /Run -> " + $r.Codigo + ' ' + $r.Saida)
+  if ($r.Codigo -ne 0) { throw "a tarefa foi criada mas não iniciou: $($r.Saida)" }
   Reg 'ok'
   exit 0
 } catch {
