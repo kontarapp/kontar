@@ -10,22 +10,26 @@ ERP suportado: **Dlinks** (MySQL `central`).
 
 ## Instalar
 
-1. Abra o **KontarConectorSetup.exe** no servidor central (ou, no zip, clique duas vezes em **Instalar.cmd**). O Windows pede permissão de Administrador.
-2. Na janela, preencha o token do Kontar (aba **Integrações** do app), servidor, porta, usuário e senha do MySQL do ERP e as lojas.
-3. Clique em **Testar conexão** e depois em **Instalar**.
+1. Abra o **KontarConectorSetup.exe** no servidor central. O Windows pede permissão de Administrador.
+2. Siga o assistente: cole o token do Kontar (app Kontar > Integrações > Gerar novo token > Copiar token), informe o servidor, usuário e senha do banco do ERP e marque as lojas.
+3. Clique em **Instalar**.
 
-Se o Windows mostrar "O Windows protegeu o computador", clique em **Mais informações** > **Executar assim mesmo** (o instalador ainda não é assinado).
+O instalador testa o token e o banco antes de instalar, leva o Node junto (não precisa instalar nada antes) e cria a tarefa do Windows `KontarConector`, que liga com o servidor e reinicia se cair. Por padrão só os inventários abertos **depois** da instalação vão pro Kontar (dá pra mudar em Opções avançadas).
 
-Sem janela (linha de comando, como Administrador): `powershell -ExecutionPolicy Bypass -File instalar.ps1` e responda as perguntas.
+Se o Windows mostrar "O Windows protegeu o computador", clique em **Mais informações** > **Executar assim mesmo** (o instalador ainda não tem assinatura digital).
 
-O instalador:
+- Pasta do programa: `C:\Program Files\Kontar Conector`
+- Configuração e registros: `C:\ProgramData\Kontar Conector` (`conector.json` só Administradores leem, porque guarda a senha do banco)
+- Para remover: **Configurações > Aplicativos > Kontar Conector > Desinstalar**.
+- Atualizar: abra o instalador novo por cima; ele já vem preenchido com a configuração atual.
 
-- baixa um Node portátil se o servidor não tiver Node 18+;
-- testa o token e o banco antes de ativar;
-- configura para levar só inventários abertos **depois** da instalação;
-- cria a tarefa do Windows `KontarConector`, que liga com o servidor e reinicia se cair.
+Instalação sem telas (várias centrais), como Administrador:
 
-Log diário em `C:\KontarConector\logs\`. Para remover: `desinstalar.ps1`.
+```
+KontarConectorSetup.exe /VERYSILENT /TOKEN=xxx /SERVIDOR=127.0.0.1 /USUARIO=u /SENHA=s /LOJAS=1,2
+```
+
+Opcionais: `/PORTA=3306 /BANCO=central /DESDE=781 /ENDERECOS=1-10`.
 
 ## O que o conector faz no banco do ERP
 

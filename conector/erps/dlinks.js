@@ -157,9 +157,25 @@ function criarDlinks(pool, cfgDl) {
     } catch (e) { try { await c.rollback(); } catch (_) {} throw e; } finally { c.release(); }
   }
 
+  // Lojas = tabelas estoquen{n} com produto; nome da tabela `loja` do Dlinks quando existir (senão "Loja n").
+  async function listarLojas() {
+    const tabs = (await q("SHOW TABLES LIKE 'estoquen%'")).map(r => String(Object.values(r)[0])).filter(t => /^estoquen\d+$/i.test(t));
+    const nomes = {};
+    try { (await q('SELECT CodLoja, Nome FROM loja')).forEach(r => { nomes[Number(r.CodLoja)] = String(r.Nome || '').trim(); }); } catch (e) {}
+    const out = [];
+    for (const t of tabs) {
+      const n = Number(t.replace(/\D/g, ''));
+      const r = await q('SELECT COUNT(*) n FROM ' + t);
+      const itens = Number(r[0].n);
+      if (itens > 0) out.push({ n, nome: nomes[n] || ('Loja ' + n), itens });
+    }
+    return out.sort((a, b) => a.n - b.n);
+  }
+  async function maiorInventario() { const r = await q('SELECT COALESCE(MAX(nIven), 0) n FROM inventario'); return Number(r[0].n); }
+
   async function testar() { const r = await q('SELECT COUNT(*) n FROM inventario'); return { inventarios: Number(r[0].n) }; }
 
-  return { listarAbertos, inventario, estaFechado, catalogo, gravarContagem, testar };
+  return { listarAbertos, inventario, estaFechado, catalogo, gravarContagem, testar, listarLojas, maiorInventario };
 }
 
 module.exports = { criarDlinks, itemCatalogo, linhasContagem, filtrosParcial, dataHoraBR, num, NOME_DIGITADOR, COLS_CONTAGEM };

@@ -18,7 +18,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-<link rel="stylesheet" href="style.css?v=16"/>
+<link rel="stylesheet" href="style.css?v=17"/>
 </head>
 <body>
 
@@ -164,8 +164,8 @@
           <p style="font-size:13px;color:var(--t2);margin:0 0 8px">Programa instalado no servidor central do cliente, pra ERPs que não chamam a API sozinhos. Ele lê o cadastro e o estoque do banco do ERP, envia o catálogo pro balanço e grava a contagem de volta no ERP quando o balanço encerra.</p>
           <ol style="font-size:13px;color:var(--t2);margin:0 0 12px;padding-left:20px;line-height:1.6">
             <li>Baixe e abra o instalador no servidor central (o Windows pede permissão de Administrador).</li>
-            <li>Na janela, informe o token desta tela, o servidor, usuário e senha do banco do ERP e as lojas.</li>
-            <li>Clique em <b>Testar conexão</b> e depois em <b>Instalar</b>.</li>
+            <li>Siga o assistente: cole o token desta tela, informe o servidor, usuário e senha do banco do ERP e marque as lojas.</li>
+            <li>Clique em <b>Instalar</b>. O instalador testa a conexão antes e já deixa o conector rodando.</li>
           </ol>
           <p style="font-size:12.5px;color:var(--t3);margin:0 0 12px">Daí em diante, inventário aberto no ERP aparece aqui com o catálogo da loja, e a contagem volta pro ERP quando o balanço é encerrado. O instalador testa tudo antes de ativar e baixa o que faltar no servidor.</p>
           <a class="btn btn-p" href="https://github.com/kontarapp/kontar/releases/latest/download/KontarConectorSetup.exe" rel="noopener">&#8595; Baixar instalador</a> <a class="btn btn-sm" style="margin-left:8px" href="https://github.com/kontarapp/kontar/releases/latest/download/kontar-conector.zip" rel="noopener">.zip</a>
@@ -679,7 +679,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="lib/inv-bip-core.js?v=16"></script>
+<script src="lib/inv-bip-core.js?v=17"></script>
 <script>
 // Painel de erros na tela (?debug=1): iPhone/Chrome iOS nao tem console acessivel na loja.
 (function(){
@@ -704,7 +704,7 @@
   setInterval(function(){ if(box) log('INFO','vivo, tela='+(document.querySelector('.page.on,.view.on')||{}).id); },15000);
 })();
 </script>
-<script src="app.js?v=16" defer></script>
+<script src="app.js?v=17" defer></script>
 
 </body>
 </html>
