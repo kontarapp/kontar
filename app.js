@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '18';
+var BUILD = '19';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -4449,6 +4449,17 @@ function renderInvEnderecos() {
     });
     enderecos.forEach(function(end){
       var ec=document.getElementById('inv-ec-'+end.replace(/[^a-z0-9]/gi,'_')); if(ec) ec.textContent=cnt[end]||0;
+      if(inv.modoFila&&colMap[end]){
+        // Quem bipou no endereço sem pegar pela fila (ex.: lançamento pela retaguarda) também aparece
+        var slotCols=_slotColetores((inv.fila||{})[end]);
+        var naFila=function(id,n){ return slotCols.some(function(c){ return c.coletorId===id||c.key===id||c.nome===n||c.nome===id+' - '+n; }); };
+        var extras=Object.keys(colMap[end]).filter(function(id){ return !naFila(id,colMap[end][id]); }).map(function(id){ return colMap[end][id]||id; });
+        var ctF=document.getElementById('inv-coltxt-'+end.replace(/[^a-z0-9]/gi,'_'));
+        if(ctF&&extras.length){
+          var htmlEx=extras.map(function(n){ return '<div>'+esc(n)+' <span style="color:var(--t3);font-size:11px">(manual)</span></div>'; }).join('');
+          ctF.innerHTML=(slotCols.length?ctF.innerHTML:'')+htmlEx;
+        }
+      }
       if(!inv.modoFila){
         var ct=document.getElementById('inv-coltxt-'+end.replace(/[^a-z0-9]/gi,'_'));
         if(ct&&colMap[end]){
