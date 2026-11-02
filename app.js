@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '22';
+var BUILD = '23';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -3804,7 +3804,8 @@ function _confirmarIdColetor() {
     db.collection('inv_inventarios').doc(activeInv.id).get().then(function(snap){
       var reg=((snap.exists&&snap.data().coletoresReg)||{})['col_'+val];
       var outro=reg&&String(reg.nome||'').trim().toLowerCase()!==String(nome||val).trim().toLowerCase();
-      if (outro && !confirm('O coletor '+val+' já está sendo usado por '+(reg.nome||'outra pessoa')+' neste balanço.\n\nDois aparelhos com o mesmo número misturam a contagem por coletor. Toque em Cancelar e escolha outro número, ou OK para usar o '+val+' mesmo assim.')) {
+      if (outro) {
+        alert('O coletor '+val+' já está sendo usado por '+(reg.nome||'outra pessoa')+' neste balanço.\n\nEscolha outro número. Se for você mesmo, use o mesmo nome de antes, ou peça pro administrador liberar o número na retaguarda (Coletores).');
         var el=document.getElementById('coletor-id-novo'); if(el){ el.focus(); el.select(); }
         return;
       }
