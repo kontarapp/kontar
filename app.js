@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '19';
+var BUILD = '20';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -1617,13 +1617,21 @@ function _confirmarEncerrarInv(invId) {
   if (!senha) { if(errEl) errEl.textContent='Informe sua senha.'; return; }
   var user=S.currentUser;
   if (!user) { if(errEl) errEl.textContent='Sessão inválida.'; return; }
-  hashPassword(senha).then(function(senhaHash) {
-    var match=isHashed(user.senha)?(user.senha===senhaHash):(user.senha===senha);
-    if (!match) {
-      if(errEl) errEl.textContent='Senha incorreta. Tente novamente.';
-      if(senhaEl){ senhaEl.value=''; senhaEl.focus(); }
-      return;
-    }
+  function _senhaErrada(){
+    if(errEl) errEl.textContent='Senha incorreta. Use sua senha de login.';
+    if(senhaEl){ senhaEl.value=''; senhaEl.focus(); }
+  }
+  function _senhaLocalConfere(){
+    if (!user.senha) return Promise.resolve(false);
+    return hashPassword(senha).then(function(senhaHash){ return isHashed(user.senha)?(user.senha===senhaHash):(user.senha===senha); });
+  }
+  // Mesma verificação do Excluir: senha do Firebase Auth primeiro (admin não tem senha local), depois a local
+  var fbUser=firebase.auth().currentUser;
+  var verifica = fbUser&&fbUser.email
+    ? fbUser.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(fbUser.email, senha)).then(function(){ return true; }, _senhaLocalConfere)
+    : _senhaLocalConfere();
+  verifica.then(function(ok) {
+    if (!ok) { _senhaErrada(); return; }
     fecharModalEncerrarInv();
     db.collection('inv_inventarios').doc(invId).update({
       status:'encerrado',
@@ -2492,7 +2500,12 @@ function _abrirModalExportErp(perfil) {
     '<div id="modal-erp-export" onclick="if(event.target===this)_fecharModalExportErp()" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto">'+
     '<div style="background:#fff;border-radius:18px;padding:28px 24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.25)">'+
       '<div style="font-size:18px;font-weight:800;margin-bottom:4px">Exportar para ERP</div>'+
-      '<div style="font-size:13px;color:var(--t3);margin-bottom:18px">Configure o formato e baixe o arquivo. O perfil é salvo automaticamente.</div>'+
+      '<div style="font-size:13px;color:var(--t3);margin-bottom:14px">Configure o formato e baixe o arquivo. O perfil é salvo automaticamente.</div>'+
+      '<div style="border:1.5px solid var(--y);border-radius:12px;padding:12px 14px;margin-bottom:18px">'+
+        '<div style="font-size:14px;font-weight:800;margin-bottom:2px">Dlinks — pacote pronto (ZIP)</div>'+
+        '<div style="font-size:12px;color:var(--t3);margin-bottom:10px">coletor|código|qtd|seção|endereço|sequencial · 1 coletor por endereço, até 150 linhas por arquivo · lista de conferência e de não cadastrados junto</div>'+
+        '<button id="erp-btn-dlinks" onclick="_erp_exportarDlinksZip()" style="width:100%;padding:12px;background:var(--y);color:#111;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">⬇ Baixar ZIP para o Dlinks</button>'+
+      '</div>'+
 
       '<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);display:block;margin-bottom:6px">Preset de ERP</label>'+
       '<select id="erp-preset" onchange="_erp_aplicarPreset(this.value)" style="width:100%;padding:10px 12px;border:1.5px solid var(--gray2);border-radius:9px;font-size:14px;font-family:inherit;margin-bottom:16px">'+presetOpts+'</select>'+
@@ -2732,6 +2745,115 @@ function _erp_gerarArquivo() {
   a.download = ((_invAtivo&&_invAtivo.nome)||'inventario').replace(/[^a-z0-9]/gi,'_')+'_ERP.'+ext;
   a.click(); setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
   _fecharModalExportErp();
+}
+
+// ── Dlinks: pacote ZIP no layout validado no balanço Santa Clara (02/11/26) ─────
+// Linha: coletor|código(14 dígitos)|qtd(4 casas, vírgula)|SEÇÃO|endereço|sequencial, CRLF também na última.
+// Uma linha por endereço+coletor+seção+produto; sequencial recomeça em 1 por coletor dentro do endereço.
+// Correção que deixa a linha negativa (ou lançada sem endereço) abate na linha do mesmo produto com mais
+// quantidade (mesmo endereço primeiro). Total <= 0 não vai. Arquivo grande o Dlinks não lê: 1 coletor x
+// 1 endereço por arquivo, até 150 linhas. Nome Inventario_ddmmaaaahhmmss.txt, +1 s por arquivo.
+var _DLINKS_MAX_LINHAS = 150;
+
+function _dlinks_montar(bips, cat, inv) {
+  var resolucoes=(inv&&inv.resolucoes)||{}, fila=(inv&&inv.fila)||{}, reg=(inv&&inv.coletoresReg)||{};
+  var porNome={}; Object.keys(reg).forEach(function(k){ var r=reg[k]||{}; if(r.nome) porNome[r.nome]=r.coletorId; if(r.userNome) porNome[r.userNome]=r.coletorId; });
+  function numColetor(b){
+    var m=String(b.coletorId||'').match(/\d+/); if(m) return m[0];
+    var r=porNome[b.coletorNome]||porNome[b.coletorId]; m=String(r||'').match(/\d+/);
+    return m?m[0]:'1';
+  }
+  var g={}, naoCad={};
+  bips.forEach(function(b){
+    var res=resolucoes[b.endereco]; if(res&&(b.rodada||1)!==res.rodada) return;
+    var qty=Number(b.qty)||0, cod=String(b.codigo||b.ean||'');
+    var p=_catItemDe(cat,cod);
+    if(!p){ var n=naoCad[cod]||(naoCad[cod]={codigo:cod,qty:0,ends:{}}); n.qty+=qty; n.ends[b.endereco||'-']=1; return; }
+    var barra=String(p.ean||p.codigo||cod);
+    var end=(b.endereco&&b.endereco!=='_CORRECAO')?String(b.endereco):'';
+    var set=String(b.setor||((fila[end]||{}).setor)||'LOJA').toUpperCase();
+    var col=numColetor(b), k=end+'|'+col+'|'+set+'|'+barra;
+    (g[k]=g[k]||{end:end,col:col,set:set,barra:barra,qty:0}).qty+=qty;
+  });
+  var L=Object.keys(g).map(function(k){ return g[k]; });
+  var r4=function(n){ return Math.round(n*1e4); };
+  L.filter(function(r){ return !r.end||r4(r.qty)<0; }).forEach(function(r){
+    var cand=L.filter(function(o){ return o!==r&&o.barra===r.barra&&o.end&&o.qty>0; }).sort(function(a,b){ return b.qty-a.qty; });
+    var alvo=cand.filter(function(o){ return o.end===r.end; })[0]||cand[0];
+    if(alvo){ alvo.qty+=r.qty; r.qty=0; }
+  });
+  var avisos=L.filter(function(r){ return r4(r.qty)<0||(!r.end&&r4(r.qty)); });
+  var linhas=L.filter(function(r){ return r.end&&r4(r.qty)>0; }).sort(function(a,b){
+    return String(a.end).localeCompare(String(b.end),undefined,{numeric:true})||(+a.col-+b.col)||a.set.localeCompare(b.set)||a.barra.localeCompare(b.barra);
+  });
+  var seq={};
+  linhas.forEach(function(r){ var k=r.end+'|'+r.col; r.seq=seq[k]=(seq[k]||0)+1; });
+  return {linhas:linhas, naoCad:Object.keys(naoCad).map(function(k){ return naoCad[k]; }), avisos:avisos};
+}
+
+function _dlinks_linha(r) {
+  var barra=String(r.barra).replace(/\D/g,''); while(barra.length<14) barra='0'+barra;
+  return [r.col, barra, r.qty.toFixed(4).replace('.',','), r.set.replace(/[^A-Z0-9 ]/g,''), r.end, r.seq].join('|');
+}
+
+// ZIP sem compressão (método 0), suficiente pra TXT pequenos e sem depender de biblioteca externa
+var _crcTab=null;
+function _crc32(u8){
+  if(!_crcTab){ _crcTab=[]; for(var n=0;n<256;n++){ var c=n; for(var k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; _crcTab[n]=c>>>0; } }
+  var crc=0xFFFFFFFF; for(var i=0;i<u8.length;i++) crc=_crcTab[(crc^u8[i])&0xFF]^(crc>>>8);
+  return (crc^0xFFFFFFFF)>>>0;
+}
+function _zipStore(arquivos){
+  var partes=[], central=[], ofs=0, d=new Date();
+  var dt=((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate(), tm=(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1);
+  function u16(v){ return [v&255,(v>>8)&255]; } function u32(v){ return [v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255]; }
+  arquivos.forEach(function(f){
+    var nome=new TextEncoder().encode(f.nome), crc=_crc32(f.dados), n=f.dados.length;
+    var comum=[].concat(u16(20),u16(0),u16(0),u16(tm),u16(dt),u32(crc),u32(n),u32(n),u16(nome.length),u16(0));
+    var loc=new Uint8Array([0x50,0x4b,0x03,0x04].concat(comum));
+    partes.push(loc,nome,f.dados);
+    central.push(new Uint8Array([0x50,0x4b,0x01,0x02].concat(u16(20),comum,u16(0),u16(0),u16(0),u32(0),u32(ofs))),nome);
+    ofs+=loc.length+nome.length+n;
+  });
+  var tamCentral=central.reduce(function(s,p){ return s+p.length; },0);
+  var fim=new Uint8Array([0x50,0x4b,0x05,0x06].concat(u16(0),u16(0),u16(arquivos.length),u16(arquivos.length),u32(tamCentral),u32(ofs),u16(0)));
+  return new Blob(partes.concat(central,[fim]),{type:'application/zip'});
+}
+
+function _erp_exportarDlinksZip() {
+  var bips=window._erpBipsCache||[], cat=window._erpCatCache||{}, inv=_invAtivo||{};
+  if(!bips.length){ alert('Sem bipagens para exportar.'); return; }
+  var m=_dlinks_montar(bips, cat, inv);
+  if(!m.linhas.length){ alert('Nenhum produto cadastrado com quantidade para exportar.'); return; }
+  var blocos=[];
+  m.linhas.forEach(function(r){
+    var ult=blocos[blocos.length-1];
+    if(!ult||ult.end!==r.end||ult.col!==r.col||ult.linhas.length>=_DLINKS_MAX_LINHAS) blocos.push(ult={end:r.end,col:r.col,linhas:[]});
+    ult.linhas.push(r);
+  });
+  var p2=function(n){ return (n<10?'0':'')+n; };
+  var t0=Date.now(), arquivos=[], conf=['arquivo;coletor;endereco;secao;linhas;seq_de;seq_ate;total'];
+  var asc=function(s){ var u=new Uint8Array(s.length); for(var i=0;i<s.length;i++){ var c=s.charCodeAt(i); u[i]=c<128?c:63; } return u; };
+  blocos.forEach(function(b,i){
+    var d=new Date(t0+i*1000);
+    var nome='Inventario_'+p2(d.getDate())+p2(d.getMonth()+1)+d.getFullYear()+p2(d.getHours())+p2(d.getMinutes())+p2(d.getSeconds())+'.txt';
+    arquivos.push({nome:nome, dados:asc(b.linhas.map(_dlinks_linha).join('\r\n')+'\r\n')});
+    var tot=b.linhas.reduce(function(s,r){ return s+r.qty; },0);
+    var secs=b.linhas.map(function(r){ return r.set; }).filter(function(s,j,a){ return a.indexOf(s)===j; }).join('/');
+    conf.push([nome,b.col,b.end,secs,b.linhas.length,b.linhas[0].seq,b.linhas[b.linhas.length-1].seq,tot.toFixed(4).replace('.',',')].join(';'));
+  });
+  var enc=function(s){ return new TextEncoder().encode('﻿'+s+'\r\n'); };
+  arquivos.push({nome:'_CONFERENCIA.csv', dados:enc(conf.join('\r\n'))});
+  if(m.naoCad.length) arquivos.push({nome:'_NAO_CADASTRADOS.csv', dados:enc(['codigo;quantidade;enderecos'].concat(m.naoCad.map(function(n){ return n.codigo+';'+String(n.qty).replace('.',',')+';'+Object.keys(n.ends).join(' '); })).join('\r\n'))});
+  var url=URL.createObjectURL(_zipStore(arquivos));
+  var a=document.createElement('a'); a.href=url;
+  a.download='Dlinks_'+(inv.nome||'inventario').replace(/[^a-z0-9]/gi,'_')+'.zip';
+  a.click(); setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  var prods={}; m.linhas.forEach(function(r){ prods[r.barra]=1; });
+  alert('ZIP gerado: '+blocos.length+' arquivo(s), '+m.linhas.length+' linhas, '+Object.keys(prods).length+' produtos.'+
+    (m.naoCad.length?'\n'+m.naoCad.length+' código(s) não cadastrado(s) ficaram de fora (veja _NAO_CADASTRADOS.csv).':'')+
+    (m.avisos.length?'\nAtenção: '+m.avisos.length+' correção(ões) sem linha pra abater ficaram de fora.':'')+
+    '\nImporte no Dlinks em ordem de nome.');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3505,12 +3627,15 @@ function gerarQREnderecos() {
   var cards = enderecos.map(function(end, i) {
     var enc = encodeURIComponent(end);
     var safeId = 'bc'+i;
+    // Número do endereço grande, pra ler de longe; encolhe só quando o nome é comprido
+    var tam = String(end).length<=3 ? 'g' : (String(end).length<=6 ? 'm' : 'p');
     return '<div class="qr-card">'
       + logoCard
+      + '<div class="addr-lbl">ENDEREÇO</div>'
+      + '<div class="addr-big '+tam+'">'+esc(end)+'</div>'
       + '<img src="https://api.qrserver.com/v1/create-qr-code/?data='+enc+'&size=150x150&margin=4" width="150" height="150" alt="'+esc(end)+'"/>'
       + '<div class="divider"></div>'
       + '<svg id="'+safeId+'" class="barcode"></svg>'
-      + '<div class="addr">'+esc(end)+'</div>'
       + '<div class="inv-info">'+esc(inv.loja)+'</div>'
       + '</div>';
   }).join('');
@@ -3537,7 +3662,9 @@ function gerarQREnderecos() {
     + '.card-logo-txt{font-size:13px;font-weight:800;color:#F97316;letter-spacing:1px;margin-bottom:10px;font-family:Arial,sans-serif}'
     + '.divider{border-top:1px dashed #ccc;margin:10px 0}'
     + '.barcode{width:100%;max-width:180px;display:block;margin:0 auto}'
-    + '.addr{font-size:15px;font-weight:800;margin-top:8px;font-family:monospace;letter-spacing:.5px;word-break:break-all}'
+    + '.addr-lbl{font-size:11px;font-weight:800;letter-spacing:3px;color:#F97316}'
+    + '.addr-big{font-weight:900;line-height:1;margin:2px 0 10px;font-family:Arial Black,Arial,sans-serif;word-break:break-all;color:#111}'
+    + '.addr-big.g{font-size:96px}.addr-big.m{font-size:56px}.addr-big.p{font-size:32px}'
     + '.inv-info{font-size:10px;color:#888;margin-top:3px}'
     + '.instr{margin-top:24px;text-align:center;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:10px}'
     + '</style></head><body>'
