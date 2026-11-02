@@ -14,7 +14,7 @@ function apiFalsa(balancos) {
     listarBalancos: async () => balancos.map(b => JSON.parse(JSON.stringify(b))),
     criarBalanco: async (b) => { chamadas.push(['criar', b]); const nb = { id: 'k' + (++seq), status: 'aberto', origem: 'erp', loja: b.loja, erp: { refErp: b.refErp, catalogoEm: null } }; balancos.push(nb); return nb; },
     enviarCatalogo: async (id, itens) => { chamadas.push(['catalogo', id, itens.length]); return { itens: itens.length }; },
-    contagem: async (id, porEnd) => { chamadas.push(['contagem', id, porEnd]); return { itens: [{ codigo: '18', quantidade: 2 }] }; },
+    contagem: async (id, porEnd, aberto) => { chamadas.push(aberto ? ['contagem', id, porEnd, true] : ['contagem', id, porEnd]); return { itens: [{ codigo: '18', quantidade: 2 }] }; },
     estadoErp: async (id, c) => { chamadas.push(['estado', id, c]); return { ok: true }; },
     confirmar: async (id) => { chamadas.push(['confirmar', id]); return { ok: true }; }
   };
@@ -26,7 +26,8 @@ function erpFalso(abertos, opts) {
     listarAbertos: async (lojas) => { chamadas.push(['abertos', lojas]); return abertos; },
     catalogo: async (inv) => { chamadas.push(['catalogo', inv.nIven]); return (opts && opts.vazio) ? [] : [{ codigo: '18' }, { codigo: '1465' }]; },
     inventario: async (n) => (opts && opts.semInv) ? null : { nIven: Number(n), nLoja: 5, Status: 0 },
-    gravarContagem: async (inv, c, o) => { chamadas.push(['gravar', inv.nIven, o]); if (opts && opts.falhaGravar) throw new Error('banco fora'); return { jaGravado: false, linhas: 1, ignorados: (opts && opts.ignorados) || [] }; }
+    estaFechado: (inv) => !!(opts && opts.fechado),
+    sincronizarContagem: async (inv, c, o) => { chamadas.push(['gravar', inv.nIven, o]); if (opts && opts.falhaGravar) throw new Error('banco fora'); return { linhas: 1, positivas: 1, negativas: 0, produtos: 1, ignorados: (opts && opts.ignorados) || [] }; }
   };
 }
 
@@ -40,7 +41,7 @@ test('expandirEnderecos: faixa, lista e array', () => {
 test('inventário aberto novo: cria balanço de origem ERP e envia catálogo', async () => {
   const api = apiFalsa([]), erp = erpFalso([{ nIven: 778, nLoja: 5, Tipo: 'PARCIAL', Nome: 'TESTE KONTAR' }]);
   const r = await rodarCiclo({ api, erp, cfg: { lojas: [5], enderecosPadrao: '1-3' }, log: logMudo });
-  assert.deepStrictEqual(r, { criados: 1, catalogos: 1, contagens: 0, erros: 0 });
+  assert.deepStrictEqual(r, { criados: 1, catalogos: 1, envios: 0, contagens: 0, erros: 0 });
   const criar = api.chamadas.find(c => c[0] === 'criar')[1];
   assert.deepStrictEqual(criar, { refErp: '778', nome: 'TESTE KONTAR · ERP 778', loja: '5', tipo: 'parcial', sequencial: false, enderecos: ['1', '2', '3'] });
   assert.deepStrictEqual(api.chamadas.find(c => c[0] === 'catalogo'), ['catalogo', 'k1', 2]);
@@ -50,8 +51,8 @@ test('inventário aberto novo: cria balanço de origem ERP e envia catálogo', a
 test('balanço já existente com catálogo: não recria nem reenvia', async () => {
   const api = apiFalsa([{ id: 'x', status: 'aberto', origem: 'erp', loja: '5', erp: { refErp: '778', catalogoEm: '2026-10-30T10:00:00Z' } }]);
   const erp = erpFalso([{ nIven: 778, nLoja: 5, Tipo: 'GERAL', Nome: 'G' }]);
-  const r = await rodarCiclo({ api, erp, cfg: {}, log: logMudo });
-  assert.deepStrictEqual(r, { criados: 0, catalogos: 0, contagens: 0, erros: 0 });
+  const r = await rodarCiclo({ api, erp, cfg: { envioDuranteSeg: 0 }, log: logMudo });
+  assert.deepStrictEqual(r, { criados: 0, catalogos: 0, envios: 0, contagens: 0, erros: 0 });
   assert.strictEqual(api.chamadas.length, 0);
 });
 
@@ -129,4 +130,49 @@ test('aviso separa fora da lista do parcial e não cadastrados', () => {
   assert.strictEqual(resumoIgnorados([]), null);
   assert.strictEqual(resumoIgnorados([{ codigo: '18', motivo: 'fora_da_lista' }, { codigo: '999', motivo: 'nao_cadastrado' }]),
     'Gravado no ERP, mas ficaram de fora: 1 fora da lista do parcial (18); 1 não cadastrado(s) no ERP (999)');
+});
+
+test('balanço aberto: manda a contagem do momento pro ERP e só repete depois do intervalo', async () => {
+  const api = apiFalsa([{ id: 'ab', status: 'aberto', origem: 'erp', loja: '5', erp: { refErp: '778', catalogoEm: '2026-10-30T10:00:00Z' } }]);
+  const erp = erpFalso([]), envios = {};
+  let t = 1000000;
+  const rodar = () => rodarCiclo({ api, erp, cfg: { lojas: [5], porEndereco: true }, log: logMudo, ultimoEnvio: envios, agora: () => t });
+  assert.deepStrictEqual(await rodar(), { criados: 0, catalogos: 0, envios: 1, contagens: 0, erros: 0 });
+  assert.deepStrictEqual(api.chamadas.find(c => c[0] === 'contagem'), ['contagem', 'ab', true, true]);
+  assert.deepStrictEqual(erp.chamadas.find(c => c[0] === 'gravar'), ['gravar', 778, { app: 0, porEndereco: true }]);
+  assert.deepStrictEqual(api.chamadas.find(c => c[0] === 'estado')[2], { envio: { linhas: 1, produtos: 1 }, erro: undefined });
+  t += 299 * 1000;
+  assert.strictEqual((await rodar()).envios, 0);
+  t += 2 * 1000;
+  assert.strictEqual((await rodar()).envios, 1);
+  assert.ok(!api.chamadas.some(c => c[0] === 'confirmar'));
+});
+
+test('balanço aberto sem catálogo, desligado (envioDuranteSeg 0) ou inventário fechado no ERP: não manda', async () => {
+  const semCat = apiFalsa([{ id: 'a1', status: 'aberto', origem: 'erp', loja: '5', erp: { refErp: '778', catalogoEm: null } }]);
+  assert.strictEqual((await rodarCiclo({ api: semCat, erp: erpFalso([]), cfg: {}, log: logMudo, ultimoEnvio: {} })).envios, 0);
+  const b = () => [{ id: 'a2', status: 'aberto', origem: 'erp', loja: '5', erp: { refErp: '778', catalogoEm: 'x' } }];
+  const desl = apiFalsa(b());
+  assert.strictEqual((await rodarCiclo({ api: desl, erp: erpFalso([]), cfg: { envioDuranteSeg: 0 }, log: logMudo, ultimoEnvio: {} })).envios, 0);
+  const fech = apiFalsa(b()), erpF = erpFalso([], { fechado: true });
+  const r = await rodarCiclo({ api: fech, erp: erpF, cfg: {}, log: logMudo, ultimoEnvio: {} });
+  assert.strictEqual(r.envios, 0); assert.strictEqual(r.erros, 0);
+  assert.ok(!erpF.chamadas.some(c => c[0] === 'gravar'));
+});
+
+test('falha no envio durante a contagem vira erro no balanço e espera o intervalo', async () => {
+  const api = apiFalsa([{ id: 'ae', status: 'aberto', origem: 'erp', loja: '5', erp: { refErp: '778', catalogoEm: 'x' } }]);
+  const erp = erpFalso([], { falhaGravar: true }), envios = {};
+  const r = await rodarCiclo({ api, erp, cfg: {}, log: logMudo, ultimoEnvio: envios, agora: () => 5000 });
+  assert.strictEqual(r.erros, 1);
+  assert.match(api.chamadas.find(c => c[0] === 'estado')[2].erro, /banco fora/);
+  assert.strictEqual(envios.ae, 5000);
+});
+
+test('API antiga (409 balanco_aberto) durante a contagem: não marca erro, fica pro encerramento', async () => {
+  const api = apiFalsa([{ id: 'av', status: 'aberto', origem: 'erp', loja: '5', erp: { refErp: '778', catalogoEm: 'x' } }]);
+  api.contagem = async () => { const e = new Error('409'); e.codigo = 'balanco_aberto'; throw e; };
+  const r = await rodarCiclo({ api, erp: erpFalso([]), cfg: {}, log: logMudo, ultimoEnvio: {} });
+  assert.strictEqual(r.erros, 0); assert.strictEqual(r.envios, 0);
+  assert.ok(!api.chamadas.some(c => c[0] === 'estado'));
 });

@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '21';
+var BUILD = '22';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -2672,9 +2672,10 @@ function _erp_buildLinhas(bips, cat, perfil) {
     bipsFilt.forEach(function(b){
       var k = porBarra ? _barra(b) : (b.codigo||b.ean);
       if (!mapa[k]) mapa[k] = {ean:b.ean, codigo:b.codigo||'', barra:_barra(b), qty:0, endereco:b.endereco, setor:b.setor||'', coletorId:b.coletorId||'', seq:b.seq||0, rodada:b.rodada||1, ts:b.ts};
-      mapa[k].qty += (b.qty||1);
+      mapa[k].qty += (b.qty==null ? 1 : Number(b.qty)||0);
     });
-    dados = Object.values(mapa);
+    // Somado: produto que a correção zerou (ou deixou negativo) não vai pro ERP (antes saía como 1)
+    dados = Object.values(mapa).filter(function(d){ return Math.round(d.qty*1e4) > 0; });
   } else {
     dados = bipsFilt.slice().sort(function(a,b){ return String(a.endereco).localeCompare(String(b.endereco),undefined,{numeric:true}) || (a.seq||0)-(b.seq||0); });
   }
@@ -2691,7 +2692,7 @@ function _erp_buildLinhas(bips, cat, perfil) {
       if (id==='barra')     return b.barra!=null?b.barra:_barra(b);
       if (id==='codigo')    return b.codigo||'';
       if (id==='ean')       return b.ean||'';
-      if (id==='qty')       return _erp_formatarQty(b.qty||1, perfil.dec);
+      if (id==='qty')       return _erp_formatarQty(b.qty==null ? 1 : Number(b.qty)||0, perfil.dec);
       if (id==='endereco')  return b.endereco||'';
       if (id==='desc')      return p.desc||b.desc||'';
       if (id==='un')        return p.un||'';
@@ -3424,12 +3425,17 @@ function liberarEnderecoFila(invId, endereco) {
   if (!restantes.length) { ref.update(new firebase.firestore.FieldPath('fila',endereco), firebase.firestore.FieldValue.delete()).catch(function(){}); return; }
   var lista={}; restantes.forEach(function(c){ lista[c.key]={userId:c.userId||'',coletorId:c.coletorId||'',nome:c.nome||'',desde:c.desde||null,concluido:!!c.concluido}; if(c.concluidoEm) lista[c.key].concluidoEm=c.concluidoEm; });
   var primeiro=restantes[0];
-  ref.update(
+  var args=[
     new firebase.firestore.FieldPath('fila',endereco,'coletores'), lista,
     new firebase.firestore.FieldPath('fila',endereco,'userId'), primeiro.userId||'',
     new firebase.firestore.FieldPath('fila',endereco,'coletorId'), primeiro.coletorId||'',
     new firebase.firestore.FieldPath('fila',endereco,'nome'), primeiro.nome||''
-  ).catch(function(){});
+  ];
+  // Quem ficou já tinha terminado: o endereço fecha (antes ficava "em andamento" e era preciso concluir na mão)
+  if (restantes.every(function(c){ return c.concluido; })) args.push(
+    new firebase.firestore.FieldPath('fila',endereco,'concluido'), true,
+    new firebase.firestore.FieldPath('fila',endereco,'concluidoEm'), firebase.firestore.FieldValue.serverTimestamp());
+  ref.update.apply(ref, args).catch(function(){});
 }
 // ── QR Code Scanner ───────────────────────────────────────────────────────
 function iniciarQRScanEndereco(invId) {
@@ -3676,7 +3682,7 @@ function gerarQREnderecos() {
 function _encontrarAtribuicao() {
   var uid=S.currentUser?S.currentUser.id:null; if(!uid) return null;
   var invs=S.invsCache||[];
-  var filaInv=invs.find(function(i){ return i.status==='aberto'&&i.modoFila; });
+  var _ic=_invColeta(), filaInv=_ic&&_ic.modoFila?_ic:null;
   if (filaInv) {
     if (_filaEndAtual&&_filaEndAtual.invId===filaInv.id) {
       var slot=(filaInv.fila||{})[_filaEndAtual.endereco]||{};
@@ -3701,6 +3707,23 @@ function _encontrarAtribuicao() {
 var _COLETOR_KEY     = 'kontar_coletor_id';
 var _COLETOR_INV_KEY = 'kontar_coletor_inv'; // invId do inventário em que o ID foi registrado
 var _PALLET_KEY      = 'kontar_modo_pallet';
+// Balanço em que ESTE aparelho está contando. Com mais de um aberto (ex.: o conector do ERP abriu outro),
+// o coletor fica no que já estava (salvo ao se identificar ou ao escolher); aparelho novo escolhe na tela.
+function _invsAbertos(){ return (S.invsCache||[]).filter(function(i){ return i.status==='aberto'; }); }
+function _invColeta(){
+  var ab=_invsAbertos(); if(!ab.length) return null;
+  var saved=localStorage.getItem(_COLETOR_INV_KEY);
+  var s=ab.find(function(i){ return i.id===saved; })||(_filaEndAtual&&ab.find(function(i){ return i.id===_filaEndAtual.invId; }));
+  return s||(ab.length===1?ab[0]:null);
+}
+function _escolherInvColeta(id){ localStorage.setItem(_COLETOR_INV_KEY,id); _filaEndAtual=null; renderColeta(); }
+function _htmlEscolherInvColeta(ab){
+  return '<div style="max-width:420px;margin:40px auto;padding:24px;background:#fff;border-radius:16px;border:1px solid var(--gray2);box-shadow:var(--sh)">'+
+    '<div style="font-size:19px;font-weight:800;margin-bottom:6px">Qual balanço você vai contar?</div>'+
+    '<div style="font-size:13px;color:var(--t2);margin-bottom:16px">Há mais de um balanço aberto. Toque no seu.</div>'+
+    ab.map(function(i){ return '<button onclick="_escolherInvColeta(\''+i.id+'\')" style="display:block;width:100%;text-align:left;padding:14px 16px;margin-bottom:10px;background:#fff;border:2px solid var(--gray2);border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">'+esc(i.nome||'Balanço')+(i.loja?'<div style="font-size:12px;font-weight:500;color:var(--t3);margin-top:2px">'+esc(i.loja)+'</div>':'')+'</button>'; }).join('')+
+  '</div>';
+}
 // ── Bip sonoro (WebAudio, sem asset). AudioContext nasce no 1º toque (autoplay Android). ──
 var _bipCtx = null;
 function _bipCtxGet(){ try{ if(!_bipCtx) _bipCtx=new (window.AudioContext||window.webkitAudioContext)(); if(_bipCtx.state==='suspended') _bipCtx.resume(); return _bipCtx; }catch(e){ return null; } }
@@ -3775,9 +3798,22 @@ function _confirmarIdColetor() {
   var val = _normColetorId((document.getElementById('coletor-id-novo')||{}).value);
   var nome = ((document.getElementById('coletor-nome-novo')||{}).value||'').trim();
   if (!val) { alert('Informe seu ID de coletor.'); return; }
+  var activeInv=_invColeta();
+  // Número já usado por outra pessoa neste balanço: dois aparelhos com o mesmo número misturam a contagem por coletor
+  if (activeInv && !_confirmarIdColetor._ok) {
+    db.collection('inv_inventarios').doc(activeInv.id).get().then(function(snap){
+      var reg=((snap.exists&&snap.data().coletoresReg)||{})['col_'+val];
+      var outro=reg&&String(reg.nome||'').trim().toLowerCase()!==String(nome||val).trim().toLowerCase();
+      if (outro && !confirm('O coletor '+val+' já está sendo usado por '+(reg.nome||'outra pessoa')+' neste balanço.\n\nDois aparelhos com o mesmo número misturam a contagem por coletor. Toque em Cancelar e escolha outro número, ou OK para usar o '+val+' mesmo assim.')) {
+        var el=document.getElementById('coletor-id-novo'); if(el){ el.focus(); el.select(); }
+        return;
+      }
+      _confirmarIdColetor._ok=true; try { _confirmarIdColetor(); } finally { _confirmarIdColetor._ok=false; }
+    }).catch(function(){ _confirmarIdColetor._ok=true; try { _confirmarIdColetor(); } finally { _confirmarIdColetor._ok=false; } });
+    return;
+  }
   _setIdColetor(val);
   _setNomeColetor(nome);
-  var activeInv=(S.invsCache||[]).find(function(i){ return i.status==='aberto'; });
   if(activeInv) {
     localStorage.setItem(_COLETOR_INV_KEY, activeInv.id);
     if(S.currentUser) {
@@ -3804,21 +3840,18 @@ function renderColeta() {
 
   // Pausa: acompanha o doc do inventário em tempo real e trava a tela
   var _invPausado=(S.invsCache||[]).find(function(i){ return i.status==='pausado'; });
-  var _anyAberto=(S.invsCache||[]).find(function(i){ return i.status==='aberto'; });
+  var _abertos=_invsAbertos();
+  // Inventário salvo já fechou/sumiu → limpa ID salvo e exige nova identificação no próximo
+  var _savedInv=localStorage.getItem(_COLETOR_INV_KEY);
+  if(_abertos.length && _savedInv && !_abertos.some(function(i){ return i.id===_savedInv; })){
+    localStorage.removeItem(_COLETOR_KEY);
+    localStorage.removeItem(_COLETOR_NOME_KEY);
+    localStorage.removeItem(_COLETOR_INV_KEY);
+  }
+  var _anyAberto=_invColeta();
+  if(!_anyAberto&&_abertos.length>1){ wrap.innerHTML=_htmlEscolherInvColeta(_abertos); return; }
   var _invAcomp=_anyAberto||_invPausado; if(_invAcomp) _iniciarColetaRealtime(_invAcomp.id); else _pararColetaRealtime();
   if(!_anyAberto&&_invPausado){ wrap.innerHTML=_htmlColetaPausada(_invPausado.nome); return; }
-
-  // Novo inventário → limpa ID salvo e exige nova identificação
-  if(_anyAberto){
-    var _savedInv=localStorage.getItem(_COLETOR_INV_KEY);
-    // Só limpa se há um inv salvo E ele é diferente do atual (troca de inventário)
-    // Se _savedInv é null, mantém o ID — usuário pode ter registrado antes desta feature
-    if(_savedInv && _savedInv!==_anyAberto.id){
-      localStorage.removeItem(_COLETOR_KEY);
-      localStorage.removeItem(_COLETOR_NOME_KEY);
-      localStorage.removeItem(_COLETOR_INV_KEY);
-    }
-  }
 
   // Exige ID de coletor antes de qualquer coisa
   if (!_getIdColetor()) {
@@ -3826,8 +3859,7 @@ function renderColeta() {
     setTimeout(function(){ var el=document.getElementById('coletor-id-novo'); if(el) el.focus(); }, 100);
     return;
   }
-  var invs=S.invsCache||[];
-  var filaInv=invs.find(function(i){ return i.status==='aberto'&&i.modoFila; });
+  var filaInv=_anyAberto&&_anyAberto.modoFila?_anyAberto:null;
   if (filaInv&&(!_filaEndAtual||_filaEndAtual.invId!==filaInv.id)) {
     // Auto-restaura sessão após F5: se o usuário tem slot ativo na fila, retoma direto
     var filaMap=filaInv.fila||{}, myColId=_getIdColetor();

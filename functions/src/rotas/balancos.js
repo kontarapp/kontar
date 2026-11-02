@@ -94,10 +94,11 @@ function rotasBalancos(repo) {
   r.get('/:id/contagem', async (req, res, next) => { try {
     const b = await repo.obterBalanco(req.cliente.id, req.params.id);
     if (!b) return res.status(404).json({ erro: 'nao_encontrado', mensagem: 'Balanço não encontrado' });
-    if (b.status !== 'encerrado') return res.status(409).json({ erro: 'balanco_aberto', mensagem: 'Contagem só disponível para balanço encerrado' });
+    // aberto=1: contagem do momento (o conector manda pro ERP enquanto bipam); sem ele, só balanço encerrado
+    if (b.status !== 'encerrado' && req.query.aberto !== '1') return res.status(409).json({ erro: 'balanco_aberto', mensagem: 'Contagem só disponível para balanço encerrado' });
     const [cat, bips] = await Promise.all([repo.lerCatalogo(b.id), repo.lerBipagens(b.id)]);
     const out = montarContagem(cat, bips, b.resolucoes || {}, { porEndereco: req.query.porEndereco === '1' });
-    out.balancoId = b.id; out.loja = b.loja || ''; out.encerradoEm = iso(b.encerradoEm);
+    out.balancoId = b.id; out.loja = b.loja || ''; out.status = b.status; out.encerradoEm = iso(b.encerradoEm);
     res.locals.resumo = out.totais.itens + ' itens';
     res.json(out);
   } catch (e) { next(e); } });
@@ -117,7 +118,8 @@ function rotasBalancos(repo) {
     if (c.erro !== undefined) { upd['erp.erro'] = c.erro ? String(c.erro).slice(0, 500) : null; upd['erp.erroEm'] = c.erro ? agora : null; }
     if (c.contagemEnviadaEm === true) upd['erp.contagemEnviadaEm'] = agora;
     if (c.pedirCatalogo === false) upd['erp.pedirCatalogo'] = false;
-    if (!Object.keys(upd).length) return res.status(400).json({ erro: 'patch_invalido', mensagem: 'Informe erro, contagemEnviadaEm ou pedirCatalogo' });
+    if (c.envio && typeof c.envio === 'object') { upd['erp.envioEm'] = agora; upd['erp.envioProdutos'] = Number(c.envio.produtos) || 0; upd['erp.envioLinhas'] = Number(c.envio.linhas) || 0; }
+    if (!Object.keys(upd).length) return res.status(400).json({ erro: 'patch_invalido', mensagem: 'Informe erro, contagemEnviadaEm, envio ou pedirCatalogo' });
     await repo.atualizarBalanco(b.id, upd);
     res.locals.resumo = Object.keys(upd).join(',');
     res.json({ ok: true });

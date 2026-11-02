@@ -2,7 +2,9 @@
 // Um ciclo do conector (roda a cada intervaloSeg):
 //  1. Inventário aberto no ERP sem balanço no Kontar → cria o balanço (origem ERP, refErp = nº do inventário).
 //  2. Balanço do ERP ainda sem catálogo → monta o catálogo da loja no ERP e envia.
-//  3. Balanço encerrado no Kontar sem contagemEnviadaEm → busca a contagem, grava no ERP, marca enviada e confirma.
+//  3. Balanço ainda aberto no Kontar → a cada envioDuranteSeg (padrão 300 s; 0 desliga) deixa o ERP igual à contagem
+//     do momento (só a diferença, positiva ou negativa), pra contagem ir aparecendo no ERP enquanto bipam.
+//  4. Balanço encerrado no Kontar sem contagemEnviadaEm → manda a diferença final, marca enviada e confirma.
 // Qualquer erro num balanço vai pro bloco "erp.erro" dele (aparece no Kontar) e é tentado de novo no próximo ciclo.
 
 function expandirEnderecos(v) {
@@ -29,11 +31,17 @@ function resumoIgnorados(ign) {
   return 'Gravado no ERP, mas ficaram de fora: ' + partes.join('; ');
 }
 
+// Último envio durante a contagem, por balanço (memória do processo: ao reiniciar, manda no primeiro ciclo).
+const ultimoEnvio = {};
+
 async function rodarCiclo(deps) {
   const { api, erp, cfg, log } = deps;
+  const envios = deps.ultimoEnvio || ultimoEnvio;
+  const agora = deps.agora ? deps.agora() : Date.now();
+  const intervalo = cfg.envioDuranteSeg == null ? 300 : Number(cfg.envioDuranteSeg) || 0;
   const lojas = (cfg.lojas || []).map(Number);
   const enderecos = expandirEnderecos(cfg.enderecosPadrao || '1-10');
-  const res = { criados: 0, catalogos: 0, contagens: 0, erros: 0 };
+  const res = { criados: 0, catalogos: 0, envios: 0, contagens: 0, erros: 0 };
 
   const marcarErro = async (b, e) => {
     res.erros++;
@@ -65,7 +73,32 @@ async function rodarCiclo(deps) {
     } catch (e) { await marcarErro(b, e); }
   }
 
-  // 3 — balanços encerrados no Kontar com contagem a devolver
+  const doMeuErp = b => b.origem === 'erp' && b.erp && /^\d+$/.test(String(b.erp.refErp || '')) && !(lojas.length && lojas.indexOf(Number(b.loja)) < 0);
+  const opcoes = { app: cfg.app || 0, porEndereco: !!cfg.porEndereco };
+  const resumoEnvio = r => r.linhas + ' linha(s) (' + r.positivas + ' +, ' + r.negativas + ' -), ' + r.produtos + ' produto(s) no ERP';
+
+  // 3 — balanços abertos: contagem vai aparecendo no ERP enquanto bipam
+  if (intervalo > 0) for (const b of doKontar) {
+    if (!doMeuErp(b) || b.status === 'encerrado' || !b.erp.catalogoEm) continue;
+    if (envios[b.id] && agora - envios[b.id] < intervalo * 1000) continue;
+    try {
+      const inv = await erp.inventario(b.erp.refErp);
+      if (!inv) throw new Error('Inventário ' + b.erp.refErp + ' não encontrado no ERP');
+      if (erp.estaFechado && erp.estaFechado(inv)) { envios[b.id] = agora; continue; } // fechado no ERP: o passo 4 avisa no encerramento
+      const contagem = await api.contagem(b.id, !!cfg.porEndereco, true);
+      const r = await erp.sincronizarContagem(inv, contagem, opcoes);
+      envios[b.id] = agora;
+      await api.estadoErp(b.id, { envio: { linhas: r.linhas, produtos: r.produtos }, erro: b.erp.erro ? null : undefined });
+      res.envios++;
+      if (r.linhas) log.info('contagem parcial no ERP: inventário ' + inv.nIven + ', ' + resumoEnvio(r));
+    } catch (e) {
+      envios[b.id] = agora;
+      if (e.codigo === 'balanco_aberto') continue; // API ainda sem envio durante a contagem: fica só no encerramento
+      await marcarErro(b, e);
+    }
+  }
+
+  // 4 — balanços encerrados no Kontar com contagem a devolver
   for (const b of doKontar) {
     if (b.origem !== 'erp' || !b.erp || !b.erp.refErp || b.status !== 'encerrado' || b.erp.contagemEnviadaEm) continue;
     if (!/^\d+$/.test(String(b.erp.refErp))) continue;
@@ -74,12 +107,12 @@ async function rodarCiclo(deps) {
       const inv = await erp.inventario(b.erp.refErp);
       if (!inv) throw new Error('Inventário ' + b.erp.refErp + ' não encontrado no ERP');
       const contagem = await api.contagem(b.id, !!cfg.porEndereco);
-      const r = await erp.gravarContagem(inv, contagem, { app: cfg.app || 0, porEndereco: !!cfg.porEndereco });
+      const r = await erp.sincronizarContagem(inv, contagem, opcoes);
       await api.estadoErp(b.id, { contagemEnviadaEm: true, erro: resumoIgnorados(r.ignorados) });
       await api.confirmar(b.id);
       res.contagens++;
-      log.info('contagem ' + (r.jaGravado ? 'já estava' : 'gravada') + ' no ERP: inventário ' + inv.nIven + ', ' + r.linhas + ' linha(s)' +
-        (r.ignorados.length ? ', ' + r.ignorados.length + ' ignorado(s)' : ''));
+      delete envios[b.id];
+      log.info('contagem final no ERP: inventário ' + inv.nIven + ', ' + resumoEnvio(r) + (r.ignorados.length ? ', ' + r.ignorados.length + ' ignorado(s)' : ''));
     } catch (e) { await marcarErro(b, e); }
   }
   return res;

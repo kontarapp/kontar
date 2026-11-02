@@ -4,7 +4,8 @@ Programa que roda no servidor central do cliente e liga o ERP ao Kontar.
 
 1. Um inventário aberto no ERP aparece sozinho no Kontar, já com o catálogo da loja (estoque, custo e venda).
 2. A equipe conta no Kontar.
-3. Quando o balanço é encerrado no Kontar, a contagem é gravada no inventário do ERP. Depois é só fechar o inventário no ERP como sempre.
+3. Enquanto bipam, a cada 5 minutos a contagem do momento vai sendo gravada no inventário do ERP (dá pra acompanhar no Dlinks).
+4. Quando o balanço é encerrado no Kontar, a contagem final é gravada e conferida. Depois é só fechar o inventário no ERP como sempre.
 
 ERP suportado: **Dlinks** (MySQL `central`).
 
@@ -35,8 +36,9 @@ Opcionais: `/PORTA=3306 /BANCO=central /DESDE=781 /ENDERECOS=1-10`.
 
 - **Lê**: `inventario`, `itens`, `estoquen{loja}`.
 - **Insere** (nunca altera nem apaga): uma linha em `inventariodigitador` com o nome `KONTAR` por inventário e as linhas de contagem em `inventariocontagem` (código, quantidade com 3 casas, endereço, data e hora).
+- A cada envio grava **só a diferença** entre o que o `KONTAR` já tem no inventário e a contagem atual do Kontar: positiva quando bipam mais, negativa quando excluem, zeram ou corrigem (o Dlinks soma as linhas, igual a um "-3" lançado na tela). Depois de gravar, confere na mesma transação que a soma bate com o Kontar; se não bater, desfaz e avisa no Kontar.
 - Não cria tabela nem coluna. Se o inventário já estiver fechado no ERP, não grava e avisa no Kontar.
-- Gravar duas vezes não duplica: se o digitador `KONTAR` do inventário já tem contagem, ele não grava de novo.
+- Gravar de novo sem mudança não grava nada (não duplica). Se o inventário for fechado no ERP antes do fim, o conector para de gravar e avisa no Kontar.
 
 Usuário do MySQL recomendado: só leitura, com `INSERT` apenas em `inventariodigitador` e `inventariocontagem`.
 
@@ -50,6 +52,7 @@ Usuário do MySQL recomendado: só leitura, com `INSERT` apenas em `inventariodi
 | `enderecosPadrao` | endereços criados no balanço do Kontar (ex.: `1-10` ou `C01,C02`) |
 | `porEndereco` | `true` grava uma linha por produto e endereço; `false`, uma linha por produto |
 | `intervaloSeg` | de quanto em quanto tempo o conector verifica (padrão 60 s) |
+| `envioDuranteSeg` | de quanto em quanto tempo manda a contagem pro ERP com o balanço aberto (padrão 300 s; `0` = só no encerramento) |
 
 Comandos manuais (na pasta do conector):
 

@@ -48,7 +48,8 @@ function criarApi(cfg, opts) {
       for (let p = 1; p <= total; p++) res = await chamar('PUT', rota, { parte: p, total, itens: itens.slice((p - 1) * TAM_PARTE, p * TAM_PARTE) });
       return res;
     },
-    contagem: (id, porEndereco) => chamar('GET', '/balancos/' + encodeURIComponent(id) + '/contagem' + (porEndereco ? '?porEndereco=1' : '')),
+    contagem: (id, porEndereco, aberto) => { const qs = [porEndereco ? 'porEndereco=1' : '', aberto ? 'aberto=1' : ''].filter(Boolean).join('&');
+      return chamar('GET', '/balancos/' + encodeURIComponent(id) + '/contagem' + (qs ? '?' + qs : '')); },
     confirmar: (id) => chamar('POST', '/balancos/' + encodeURIComponent(id) + '/contagem/confirmar'),
     estadoErp: (id, campos) => chamar('PATCH', '/balancos/' + encodeURIComponent(id) + '/erp', campos)
   };

@@ -75,3 +75,73 @@ test('linhasContagem parcial: só itens da lista; bipado fora da lista fica de f
   assert.deepStrictEqual(linhas.map(l => [l.CodigoBarra, l.Qtd]), [['1465', 1.5]]);
   assert.deepStrictEqual(ignorados.map(i => [i.codigo, i.motivo]), [['18', 'fora_da_lista'], ['999', 'nao_cadastrado']]);
 });
+
+// Banco falso só com o que sincronizarContagem usa: inventario, inventariodigitador, inventariocontagem, itens.
+function poolFalso(opts) {
+  opts = opts || {};
+  const db = { contagem: (opts.contagem || []).slice(), digitadores: (opts.digitadores || []).slice(), status: opts.status || 0 };
+  let seq = 100;
+  const exec = async (sql, p) => {
+    if (/FROM inventario WHERE nIven/.test(sql)) return [[{ nIven: p[0], nLoja: 5, Tipo: opts.tipo || 'GERAL', Status: db.status }]];
+    if (/SELECT nReg FROM inventariodigitador/.test(sql)) return [db.digitadores.filter(d => d.nIven === p[0] && d.Nome === p[1])];
+    if (/INSERT INTO inventariodigitador/.test(sql)) { const d = { nReg: ++seq, nIven: p[1], Nome: p[2] }; db.digitadores.push(d); return [{ insertId: d.nReg }]; }
+    if (/SUM\(Qtd\)/.test(sql)) {
+      const m = {}; db.contagem.filter(r => r.nIven === p[0] && r.CodDigitador === p[1]).forEach(r => { const k = r.CodigoBarra + '|' + r.End; m[k] = (m[k] || 0) + Number(r.Qtd); });
+      return [Object.keys(m).map(k => ({ CodigoBarra: k.split('|')[0], End: k.split('|')[1], q: m[k].toFixed(3) }))];
+    }
+    if (/FROM itens WHERE CodigoBarra IN/.test(sql)) return [p[0].filter(c => c !== 'NC').map(c => ({ CodigoBarra: c, CodGrupo: 7 }))];
+    if (/SELECT DISTINCT CodigoBarra FROM inventariocontagem/.test(sql)) return [[]];
+    if (/INSERT INTO inventariocontagem/.test(sql)) {
+      const cols = sql.match(/\(([^)]+)\)/)[1].split(',').map(s => s.trim());
+      p[0].forEach(v => { const r = {}; cols.forEach((c, i) => { r[c] = v[i]; }); if (opts.corromper) r.Qtd = Number(r.Qtd) + 1; db.contagem.push(r); });
+      return [{ affectedRows: p[0].length }];
+    }
+    throw new Error('SQL não previsto no teste: ' + sql);
+  };
+  let pendente = null;
+  const conn = { beginTransaction: async () => { pendente = db.contagem.length; }, commit: async () => { pendente = null; },
+    rollback: async () => { if (pendente != null) db.contagem.length = pendente; }, release() {}, query: exec };
+  return { db, query: exec, getConnection: async () => conn };
+}
+const { criarDlinks } = require('../erps/dlinks');
+const somaDe = (db, cod) => db.contagem.filter(r => r.CodigoBarra === cod).reduce((s, r) => s + Number(r.Qtd), 0);
+const cont = itens => ({ itens: itens.map(([codigo, quantidade]) => ({ codigo, quantidade })) });
+
+test('sincronizarContagem: grava, depois só a diferença (negativa quando diminuiu) e nada quando não mudou', async () => {
+  const pool = poolFalso(), dl = criarDlinks(pool, {}), inv = { nIven: 900, nLoja: 5 };
+  let r = await dl.sincronizarContagem(inv, cont([['A', 10], ['B', 4]]));
+  assert.deepStrictEqual([r.linhas, r.positivas, r.negativas, r.produtos], [2, 2, 0, 2]);
+  assert.strictEqual(pool.db.digitadores.length, 1);
+  r = await dl.sincronizarContagem(inv, cont([['A', 7], ['B', 4], ['C', 2]]));
+  assert.deepStrictEqual([r.linhas, r.positivas, r.negativas], [2, 1, 1]);
+  assert.deepStrictEqual(pool.db.contagem.filter(x => x.CodigoBarra === 'A').map(x => x.Qtd), [10, -3]);
+  r = await dl.sincronizarContagem(inv, cont([['A', 7], ['C', 2]])); // B excluído no Kontar
+  assert.deepStrictEqual([r.linhas, r.negativas], [1, 1]);
+  assert.deepStrictEqual([somaDe(pool.db, 'A'), somaDe(pool.db, 'B'), somaDe(pool.db, 'C')], [7, 0, 2]);
+  r = await dl.sincronizarContagem(inv, cont([['A', 7], ['C', 2]]));
+  assert.strictEqual(r.linhas, 0);
+  assert.strictEqual(pool.db.digitadores.length, 1);
+  assert.ok(pool.db.contagem.every(x => x.CodDigitador === 101 && x.End === '0' && x.CodGrupo === 7 && x.nIven === 900));
+});
+
+test('sincronizarContagem: contagem antiga gravada pela versão anterior vira base (não duplica)', async () => {
+  const pool = poolFalso({ digitadores: [{ nReg: 55, nIven: 900, Nome: 'KONTAR' }],
+    contagem: [{ nIven: 900, CodDigitador: 55, CodigoBarra: 'A', End: '0', Qtd: 10 }] });
+  const r = await criarDlinks(pool, {}).sincronizarContagem({ nIven: 900, nLoja: 5 }, cont([['A', 10]]));
+  assert.strictEqual(r.linhas, 0);
+  assert.strictEqual(somaDe(pool.db, 'A'), 10);
+});
+
+test('sincronizarContagem: inventário fechado não grava; conferência que não bate desfaz tudo', async () => {
+  await assert.rejects(criarDlinks(poolFalso({ status: 2 }), {}).sincronizarContagem({ nIven: 900, nLoja: 5 }, cont([['A', 1]])), /fechado/);
+  const ruim = poolFalso({ corromper: true });
+  await assert.rejects(criarDlinks(ruim, {}).sincronizarContagem({ nIven: 900, nLoja: 5 }, cont([['A', 1]])), /não bateu/);
+  assert.strictEqual(ruim.db.contagem.length, 0);
+});
+
+test('sincronizarContagem: não cadastrado no ERP fica de fora e não entra na conferência', async () => {
+  const pool = poolFalso();
+  const r = await criarDlinks(pool, {}).sincronizarContagem({ nIven: 900, nLoja: 5 }, cont([['A', 2], ['NC', 5]]));
+  assert.strictEqual(r.linhas, 1);
+  assert.deepStrictEqual(r.ignorados.map(i => i.codigo), ['NC']);
+});

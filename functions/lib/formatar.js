@@ -6,7 +6,8 @@ function formatarBalanco(d, extras) {
     tipo: d.tipo || 'geral', sequencial: !!d.sequencial, enderecos: d.enderecos || [], setores: d.setores || [],
     criadoEm: iso(d.criadoEm), encerradoEm: iso(d.encerradoEm),
     erp: { refErp: erp.refErp || null, catalogoEm: iso(erp.catalogoEm), catalogoItens: erp.catalogoItens == null ? null : erp.catalogoItens,
-      contagemEnviadaEm: iso(erp.contagemEnviadaEm), contagemRecebidaEm: iso(erp.contagemRecebidaEm), erro: erp.erro || null },
+      contagemEnviadaEm: iso(erp.contagemEnviadaEm), contagemRecebidaEm: iso(erp.contagemRecebidaEm), erro: erp.erro || null,
+      envioEm: iso(erp.envioEm), envioProdutos: erp.envioProdutos == null ? null : erp.envioProdutos },
     totais: { bipagens: (extras && extras.bipagens) || 0, enderecos: (d.enderecos || []).length }
   };
 }

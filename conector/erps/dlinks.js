@@ -144,8 +144,12 @@ function criarDlinks(pool, cfgDl) {
     return itens.map(r => itemCatalogo(r, est[String(r.CodigoBarra).trim()])).filter(i => i.codigo);
   }
 
-  // Grava a contagem final. Idempotente: se o digitador KONTAR deste inventário já tem linhas, não grava de novo.
-  async function gravarContagem(inv, contagem, opts) {
+  // Deixa o digitador KONTAR do inventário igual à contagem atual do Kontar. Só INSERE: compara, por produto e
+  // endereço, a soma do que o KONTAR já gravou com o que deveria estar e grava a diferença (negativa quando
+  // excluíram/zeraram/corrigiram no Kontar — o Dlinks soma as linhas, igual a um "-3" lançado na tela).
+  // Serve durante a contagem (envio periódico) e no encerramento; rodar de novo sem mudança não grava nada.
+  // Confere no fim, dentro da transação, que a soma gravada bate com a contagem; se não bater, desfaz.
+  async function sincronizarContagem(inv, contagem, opts) {
     opts = opts || {};
     const nIven = Number(inv.nIven), nLoja = lojaValida(inv.nLoja);
     const atual = await inventario(nIven);
@@ -156,28 +160,51 @@ function criarDlinks(pool, cfgDl) {
       await c.beginTransaction();
       const [dig] = await c.query('SELECT nReg FROM inventariodigitador WHERE nIven = ? AND Nome = ? ORDER BY nReg LIMIT 1', [nIven, NOME_DIGITADOR]);
       let codDig = dig[0] && dig[0].nReg;
-      if (codDig) {
-        const [[ja]] = await c.query('SELECT COUNT(*) n FROM inventariocontagem WHERE nIven = ? AND CodDigitador = ?', [nIven, codDig]);
-        if (Number(ja.n) > 0) { await c.commit(); return { jaGravado: true, linhas: Number(ja.n), ignorados: [], codDigitador: codDig }; }
-      } else {
+      if (!codDig) {
         const [ins] = await c.query('INSERT INTO inventariodigitador (nLoja, nIven, Nome, Senha, Backup) VALUES (?, ?, ?, ?, 0)', [0, nIven, NOME_DIGITADOR, '']);
         codDig = ins.insertId;
       }
-      const cods = [...new Set((contagem.itens || []).map(i => String(i.codigo || i.ean || '').trim()).filter(Boolean))];
+      const somaGravada = async () => {
+        const [rows] = await c.query('SELECT CodigoBarra, End, SUM(Qtd) q FROM inventariocontagem WHERE nIven = ? AND CodDigitador = ? GROUP BY CodigoBarra, End', [nIven, codDig]);
+        const m = {}; rows.forEach(r => { const q = r3(num(r.q) || 0); if (q) m[String(r.CodigoBarra).trim() + '\u0001' + String(r.End)] = q; });
+        return m;
+      };
+      const jaTem = await somaGravada();
+      const cods = [...new Set((contagem.itens || []).map(i => String(i.codigo || i.ean || '').trim()).filter(Boolean)
+        .concat(Object.keys(jaTem).map(k => k.split('\u0001')[0])))];
       const grupos = {};
       for (let i = 0; i < cods.length; i += 1000) {
         const [rows] = await c.query('SELECT CodigoBarra, CodGrupo FROM itens WHERE CodigoBarra IN (?)', [cods.slice(i, i + 1000)]);
         rows.forEach(r => { grupos[String(r.CodigoBarra).trim()] = Number(r.CodGrupo) || 0; });
       }
       const lista = await listaParcial(atual);
-      const { linhas, ignorados } = linhasContagem(contagem, { nLoja, nIven, codDigitador: codDig, dataHora: dataHoraBR(opts.agora || new Date()),
-        app: opts.app || 0, porEndereco: !!opts.porEndereco, grupos, lista });
+      const ctx = { nLoja, nIven, codDigitador: codDig, dataHora: dataHoraBR(opts.agora || new Date()), app: opts.app || 0, porEndereco: !!opts.porEndereco, grupos, lista };
+      const { linhas: alvo, ignorados } = linhasContagem(contagem, ctx);
+      const deveria = {};
+      alvo.forEach(l => { const k = l.CodigoBarra + '\u0001' + l.End; deveria[k] = r3((deveria[k] || 0) + l.Qtd); });
+      const modelo = {}; alvo.forEach(l => { modelo[l.CodigoBarra] = l; });
+      const linhas = [];
+      new Set(Object.keys(deveria).concat(Object.keys(jaTem))).forEach(k => {
+        const dif = r3((deveria[k] || 0) - (jaTem[k] || 0));
+        if (!dif) return;
+        const [cod, end] = k.split('\u0001');
+        linhas.push(Object.assign({}, modelo[cod] || { nLoja, nIven, CodigoBarra: cod, CodDigitador: codDig, DataHora: ctx.dataHora,
+          App: ctx.app, Lote: 0, Backup: 0, CodGrupo: grupos[cod] || 0, seq: 0, emissornfe: 0 }, { Qtd: dif, End: end }));
+      });
       for (let i = 0; i < linhas.length; i += 500) {
         const lote = linhas.slice(i, i + 500);
         await c.query('INSERT INTO inventariocontagem (' + COLS_CONTAGEM.join(', ') + ') VALUES ?', [lote.map(l => COLS_CONTAGEM.map(k => l[k]))]);
       }
+      if (linhas.length) {
+        const depois = await somaGravada();
+        const chaves = new Set(Object.keys(deveria).concat(Object.keys(depois)));
+        const errados = [...chaves].filter(k => r3((deveria[k] || 0) - (depois[k] || 0)) !== 0);
+        if (errados.length) throw new Error('Conferência no Dlinks não bateu em ' + errados.length + ' produto(s) (ex.: ' + errados[0].replace('\u0001', ' end ') + '); nada gravado');
+      }
       await c.commit();
-      return { jaGravado: false, linhas: linhas.length, ignorados, codDigitador: codDig };
+      const pos = linhas.filter(l => l.Qtd > 0).length;
+      return { linhas: linhas.length, positivas: pos, negativas: linhas.length - pos, ignorados, codDigitador: codDig,
+        produtos: new Set(Object.keys(deveria).map(k => k.split('\u0001')[0])).size };
     } catch (e) { try { await c.rollback(); } catch (_) {} throw e; } finally { c.release(); }
   }
 
@@ -199,7 +226,7 @@ function criarDlinks(pool, cfgDl) {
 
   async function testar() { const r = await q('SELECT COUNT(*) n FROM inventario'); return { inventarios: Number(r[0].n) }; }
 
-  return { listarAbertos, inventario, estaFechado, catalogo, gravarContagem, testar, listarLojas, maiorInventario, listaParcial };
+  return { listarAbertos, inventario, estaFechado, catalogo, sincronizarContagem, gravarContagem: sincronizarContagem, testar, listarLojas, maiorInventario, listaParcial };
 }
 
 module.exports = { criarDlinks, itemCatalogo, linhasContagem, filtrosParcial, dataHoraBR, num, NOME_DIGITADOR, COLS_CONTAGEM };
