@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '20';
+var BUILD = '21';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -3626,25 +3626,18 @@ function gerarQREnderecos() {
     : '<div class="card-logo-txt">Kontar</div>';
   var cards = enderecos.map(function(end, i) {
     var enc = encodeURIComponent(end);
-    var safeId = 'bc'+i;
     // Número do endereço grande, pra ler de longe; encolhe só quando o nome é comprido
     var tam = String(end).length<=3 ? 'g' : (String(end).length<=6 ? 'm' : 'p');
     return '<div class="qr-card">'
       + logoCard
       + '<div class="addr-lbl">ENDEREÇO</div>'
       + '<div class="addr-big '+tam+'">'+esc(end)+'</div>'
-      + '<img src="https://api.qrserver.com/v1/create-qr-code/?data='+enc+'&size=150x150&margin=4" width="150" height="150" alt="'+esc(end)+'"/>'
-      + '<div class="divider"></div>'
-      + '<svg id="'+safeId+'" class="barcode"></svg>'
+      + '<img src="https://api.qrserver.com/v1/create-qr-code/?data='+enc+'&size=180x180&margin=4" width="180" height="180" alt="'+esc(end)+'"/>'
       + '<div class="inv-info">'+esc(inv.loja)+'</div>'
       + '</div>';
   }).join('');
-  var barcodeInits = enderecos.map(function(end, i) {
-    return 'JsBarcode("#bc'+i+'","'+end.replace(/"/g,'\\"')+'",{format:"CODE128",width:1.6,height:48,displayValue:false,margin:4});';
-  }).join('');
   var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
     + '<title>Etiquetas — '+esc(inv.loja)+'</title>'
-    + '<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>'
     + '<style>'
     + '*{box-sizing:border-box;margin:0;padding:0}'
     + '@page{margin:12mm}'
@@ -3659,13 +3652,11 @@ function gerarQREnderecos() {
     + '.qr-card{border:2px solid #222;border-radius:10px;padding:14px 10px;text-align:center;page-break-inside:avoid}'
     + '.qr-card img{display:block;margin:0 auto}'
     + '.card-logo{height:32px;object-fit:contain;display:block;margin:0 auto 10px}'
-    + '.card-logo-txt{font-size:13px;font-weight:800;color:#F97316;letter-spacing:1px;margin-bottom:10px;font-family:Arial,sans-serif}'
-    + '.divider{border-top:1px dashed #ccc;margin:10px 0}'
-    + '.barcode{width:100%;max-width:180px;display:block;margin:0 auto}'
-    + '.addr-lbl{font-size:11px;font-weight:800;letter-spacing:3px;color:#F97316}'
+    + '.card-logo-txt{font-size:13px;font-weight:800;color:#111;letter-spacing:1px;margin-bottom:10px;font-family:Arial,sans-serif}'
+    + '.addr-lbl{font-size:11px;font-weight:800;letter-spacing:3px;color:#555}'
     + '.addr-big{font-weight:900;line-height:1;margin:2px 0 10px;font-family:Arial Black,Arial,sans-serif;word-break:break-all;color:#111}'
     + '.addr-big.g{font-size:96px}.addr-big.m{font-size:56px}.addr-big.p{font-size:32px}'
-    + '.inv-info{font-size:10px;color:#888;margin-top:3px}'
+    + '.inv-info{font-size:10px;color:#888;margin-top:6px}'
     + '.instr{margin-top:24px;text-align:center;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:10px}'
     + '</style></head><body>'
     + '<div class="header">'
@@ -3673,8 +3664,8 @@ function gerarQREnderecos() {
     + '<div class="header-info"><h1>Etiquetas de Endereço — Inventário</h1><p>'+esc(inv.loja)+' &nbsp;|&nbsp; '+data+'</p></div>'
     + '</div>'
     + '<div class="grid">'+cards+'</div>'
-    + '<div class="instr">Scanner 2D: escaneie o QR code &nbsp;|&nbsp; Scanner 1D: escaneie o código de barras &nbsp;|&nbsp; Sem scanner: câmera do celular ou digitação</div>'
-    + '<script>window.onload=function(){'+barcodeInits+' setTimeout(function(){window.print();},400);};<\/script>'
+    + '<div class="instr">Escaneie o QR code com o scanner ou a câmera do celular &nbsp;|&nbsp; Sem leitor: digite o número do endereço</div>'
+    + '<script>window.onload=function(){ setTimeout(function(){window.print();},400);};<\/script>'
     + '</body></html>';
   var w = window.open('', '_blank', 'width=900,height=700');
   if (w) { w.document.write(html); w.document.close(); }
