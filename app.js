@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '23';
+var BUILD = '24';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -2098,7 +2098,8 @@ function _renderUltimasBipagens(bips, invId) {
     wrap.innerHTML='<table style="width:100%"><thead><tr><th style="width:55px">Seq</th><th>EAN</th><th>Descrição</th><th style="width:55px;text-align:center">Qtd</th><th style="width:40px"></th></tr></thead><tbody>'+
       bips.map(function(b){
         var prod = _catItemDe(cat,b.codigo||b.ean)||{};
-        var podeExcluir = b._id && !b._pend && !b._erro && _invColetaAtual && !_invColetaAtual.concluido;
+        // Pode excluir logo depois de bipar, mesmo antes do servidor confirmar (a exclusão entra na mesma fila de envio)
+        var podeExcluir = b._id && !b._erro && _invColetaAtual && !_invColetaAtual.concluido;
         return '<tr style="'+(b._erro?'background:#fdecea':b._pend?'opacity:.6':'')+'">'+
           '<td><span style="font-weight:700;color:var(--t3)">#'+b.seq+'</span></td>'+
           '<td style="font-family:monospace;font-size:12px">'+(b.codigo?'<b>'+esc(b.codigo)+'</b> · ':'')+esc(b.ean)+'</td>'+
@@ -3573,6 +3574,9 @@ function _iniciarCamFixa(){
     _camFixaUltimo={val:val,t:agora}; _camFixaCand={val:'',t:0};
     var ei=document.getElementById('inv-ean-input'), qi=document.getElementById('inv-qty-input');
     if (!ei||ei.disabled) return;
+    // Mesmo produto ainda na frente da câmera enquanto digitam a Qtd: ignora (antes fechava o item com a Qtd
+    // pela metade e reabria o mesmo com 1 — a quantidade "mudava sozinha" e duplicava a bipagem)
+    if (document.activeElement===qi && ei.value.trim()===val) return;
     // Item anterior ainda esperando a Qtd: fecha com a Qtd que está e segue pro novo (igual ao Fluxo)
     if (ei.value.trim()&&document.activeElement===qi) registrarBipagem();
     _bipSom('leitura');
@@ -5114,6 +5118,8 @@ function _gravarBipagemLocal(bipData) {
   var p = ref.set(bipData).then(function(){
     _offlinePending=Math.max(0,_offlinePending-1); if(window._atualizarOfflineBanner) window._atualizarOfflineBanner();
     bipData._pend=false;
+    // Confirmado pelo servidor: redesenha a lista (antes só atualizava no próximo bip)
+    if (_bipsLocais.indexOf(bipData)>=0) _renderUltimasBipagens(_bipsLocais.slice(0,20), bipData.invId);
   }).catch(function(e){
     _offlinePending=Math.max(0,_offlinePending-1); if(window._atualizarOfflineBanner) window._atualizarOfflineBanner();
     bipData._pend=false; bipData._erro=(e&&e.code)||'erro';
