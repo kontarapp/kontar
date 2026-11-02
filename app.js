@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '25';
+var BUILD = '26';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -3556,6 +3556,7 @@ function _iniciarCamFixa(){
   wrap.style.display='block';
   wrap.innerHTML='<div style="position:relative;border-radius:10px;overflow:hidden;background:#111">'+
     '<video id="inv-cam-video" style="width:100%;max-height:170px;aspect-ratio:3/1;object-fit:cover;display:block" autoplay playsinline muted></video>'+
+    '<div style="position:absolute;left:4%;right:4%;top:'+(50-_CAM_MIRA*100)+'%;height:'+(_CAM_MIRA*200)+'%;border:1px dashed rgba(255,255,255,.35);border-radius:6px;pointer-events:none"></div>'+
     '<div style="position:absolute;left:8%;right:8%;top:50%;height:2px;background:rgba(249,115,22,.85);box-shadow:0 0 8px rgba(249,115,22,.8)"></div>'+
     '<div id="inv-cam-msg" style="position:absolute;left:8px;bottom:6px;color:#fff;font-size:11px;font-weight:600;text-shadow:0 1px 2px #000">Aponte pro código de barras</div>'+
   '</div>';
@@ -3568,6 +3569,7 @@ function _iniciarCamFixa(){
   var leu=function(val){
     if (_camFixa!==reader||_decisaoAberta()||!val) return;
     var agora=Date.now();
+    if (agora<_camFixaPausaAte) return; // acabou de confirmar um item: dá tempo de mirar o próximo
     // Exige a mesma leitura 2x seguidas (em até 1,2 s) antes de aceitar: corta leitura errada da câmera
     if (!(_camFixaCand.val===val&&agora-_camFixaCand.t<1200)) { _camFixaCand={val:val,t:agora}; return; }
     // Mesma etiqueta ainda na frente da câmera: janela deslizante — só aceita de novo depois que o
@@ -3591,7 +3593,11 @@ function _iniciarCamFixa(){
   };
   // 720p + foco contínuo: no padrão (640x480, sem pedir foco) o EAN chega borrado e o ZXing fica tentando.
   var constraints={video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720},focusMode:'continuous'}};
-  reader.decodeFromConstraints(constraints,'inv-cam-video',function(result){ if(result) leu(result.getText()); })
+  reader.decodeFromConstraints(constraints,'inv-cam-video',function(result){
+    if (!result) return;
+    var ys=(result.getResultPoints()||[]).map(function(p){ return p.getY(); });
+    if (_naMiraCam(document.getElementById('inv-cam-video'), ys.length?Math.min.apply(null,ys):null, ys.length?Math.max.apply(null,ys):null)) leu(result.getText());
+  })
   .then(function(){ _afinarCamFixa(reader); })
   .catch(function(err){ _pararCamFixa(); localStorage.setItem(_CAM_FIXA_KEY,'0'); showToast('Câmera indisponível: '+(err.message||err)); });
   // Leitor nativo do navegador (ML Kit) em PARALELO, quando existir: lê em ~1 frame. O ZXing continua
@@ -3604,12 +3610,29 @@ function _iniciarCamFixa(){
         if (_camFixa!==reader){ clearInterval(_camFixaDetTimer); _camFixaDetTimer=null; return; }
         if (ocupado||!v||v.readyState<2) return;
         ocupado=true;
-        det.detect(v).then(function(codes){ ocupado=false; if(codes&&codes.length) leu(codes[0].rawValue); }).catch(function(){ ocupado=false; });
+        det.detect(v).then(function(codes){
+          ocupado=false;
+          var naFaixa=(codes||[]).filter(function(c){ var b=c.boundingBox; return !b||_naMiraCam(v, b.top, b.bottom); });
+          var meio=(v.videoHeight||0)/2;
+          naFaixa.sort(function(a,b){ var ca=a.boundingBox?Math.abs(a.boundingBox.top+a.boundingBox.height/2-meio):0, cb=b.boundingBox?Math.abs(b.boundingBox.top+b.boundingBox.height/2-meio):0; return ca-cb; });
+          if (naFaixa.length) leu(naFaixa[0].rawValue);
+        }).catch(function(){ ocupado=false; });
       }, 120);
     } catch(e){}
   }
 }
 var _camFixaDetTimer=null;
+// Só aceita código que encosta na faixa do meio da imagem VISÍVEL (a linha laranja ± _CAM_MIRA da altura):
+// a câmera parava de enxergar o produto do lado / de cima / de baixo. O vídeo usa object-fit:cover 3:1,
+// então o quadro 16:9 aparece cortado em cima e embaixo — o que está fora da tela também era lido.
+var _CAM_MIRA = 0.18;
+var _camFixaPausaAte = 0; // depois de confirmar um item, a câmera espera um pouco pra mirarem o próximo
+function _naMiraCam(v, yMin, yMax) {
+  if (!v || yMin==null || yMax==null || !v.videoWidth || !v.videoHeight || !v.clientWidth || !v.clientHeight) return true;
+  var visH = Math.min(v.videoHeight, v.videoWidth * v.clientHeight / v.clientWidth);
+  var meio = v.videoHeight/2, tol = visH*_CAM_MIRA;
+  return yMin <= meio+tol && yMax >= meio-tol;
+}
 // Depois que o stream abre: liga foco contínuo e um zoom leve (EAN pequeno fica legível de mais longe).
 function _afinarCamFixa(reader){
   try {
@@ -5119,6 +5142,7 @@ function _gravarBipagemLocal(bipData) {
   bipData.clienteId = bipData.clienteId || (S.currentUser && S.currentUser.clienteId) || '';
   bipData._id = ref.id;
   bipData._pend = true;
+  _camFixaPausaAte = Date.now() + 500; _camFixaCand = {val:'',t:0};
   _offlinePending++; if(window._atualizarOfflineBanner) window._atualizarOfflineBanner();
   var p = ref.set(bipData).then(function(){
     _offlinePending=Math.max(0,_offlinePending-1); if(window._atualizarOfflineBanner) window._atualizarOfflineBanner();
