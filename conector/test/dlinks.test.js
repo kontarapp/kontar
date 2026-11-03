@@ -79,17 +79,27 @@ test('linhasContagem parcial: só itens da lista; bipado fora da lista fica de f
 // Banco falso só com o que sincronizarContagem usa: inventario, inventariodigitador, inventariocontagem, itens.
 function poolFalso(opts) {
   opts = opts || {};
-  const db = { contagem: (opts.contagem || []).slice(), digitadores: (opts.digitadores || []).slice(), status: opts.status || 0 };
+  const db = { contagem: (opts.contagem || []).slice(), digitadores: (opts.digitadores || []).slice(), produtos: (opts.produtos || []).slice(), status: opts.status || 0 };
   let seq = 100;
   const exec = async (sql, p) => {
     if (/FROM inventario WHERE nIven/.test(sql)) return [[{ nIven: p[0], nLoja: 5, Tipo: opts.tipo || 'GERAL', Status: db.status }]];
     if (/SELECT nReg FROM inventariodigitador/.test(sql)) return [db.digitadores.filter(d => d.nIven === p[0] && d.Nome === p[1])];
     if (/INSERT INTO inventariodigitador/.test(sql)) { const d = { nReg: ++seq, nIven: p[1], Nome: p[2] }; db.digitadores.push(d); return [{ insertId: d.nReg }]; }
-    if (/SUM\(Qtd\)/.test(sql)) {
+    if (/SUM\(Qtd\)/.test(sql) && /CodDigitador = \?/.test(sql)) {
       const m = {}; db.contagem.filter(r => r.nIven === p[0] && r.CodDigitador === p[1]).forEach(r => { const k = r.CodigoBarra + '|' + r.End; m[k] = (m[k] || 0) + Number(r.Qtd); });
       return [Object.keys(m).map(k => ({ CodigoBarra: k.split('|')[0], End: k.split('|')[1], q: m[k].toFixed(3) }))];
     }
-    if (/FROM itens WHERE CodigoBarra IN/.test(sql)) return [p[0].filter(c => c !== 'NC').map(c => ({ CodigoBarra: c, CodGrupo: 7 }))];
+    if (/SHOW COLUMNS FROM itens/.test(sql)) return [[{ Field: 'CodigoBarra' }, { Field: 'P5' }]];
+    if (/FROM itens WHERE CodigoBarra IN/.test(sql)) return [p[0].filter(c => c !== 'NC').map(c => ({ CodigoBarra: c, CodGrupo: 7, Descricao: 'PRODUTO ' + c, Unid: 'UN', custo: '2.50', venda: '4,00' }))];
+    if (/SUM\(Qtd\) q FROM inventariocontagem WHERE nIven = \? AND CodigoBarra IN/.test(sql)) {
+      const m = {}; db.contagem.filter(r => r.nIven === p[0] && p[1].includes(r.CodigoBarra)).forEach(r => { m[r.CodigoBarra] = (m[r.CodigoBarra] || 0) + Number(r.Qtd); });
+      return [Object.keys(m).map(k => ({ CodigoBarra: k, q: m[k].toFixed(3) }))];
+    }
+    if (/FROM inventarioprodutos WHERE nIven/.test(sql)) return [db.produtos.filter(r => r.nIven === p[0] && p[1].includes(r.CodigoBarra))];
+    if (/FROM custoloja5 WHERE/.test(sql)) return [p[0].filter(c => c === 'A').map(c => ({ CodigoBarra: c, Custo: '3,10' }))];
+    if (/FROM estoquen5 WHERE/.test(sql)) return [p[0].map(c => ({ CodigoBarra: c, Qtd: '12,000', CustoMedio: '0.00' }))];
+    if (/INSERT INTO inventarioprodutos/.test(sql)) { db.produtos.push({ nReg: ++seq, nLoja: p[0], nIven: p[1], CodigoBarra: p[2], Descricao: p[3], Und: p[4], Qtd: p[5], QtdAnt: p[6], TotalCusto: p[7], TotalVenda: p[8], End: p[9], CodGrupo: p[10], CustoUnitario: p[11], Status: 0 }); return [{ insertId: seq }]; }
+    if (/UPDATE inventarioprodutos SET Qtd/.test(sql)) { const r = db.produtos.find(x => x.nReg === p[3] && x.nIven === p[4] && x.Status === 0); if (r) { r.Qtd = p[0]; r.TotalCusto = p[1]; r.TotalVenda = p[2]; } return [{ affectedRows: r ? 1 : 0 }]; }
     if (/SELECT DISTINCT CodigoBarra FROM inventariocontagem/.test(sql)) return [[]];
     if (/INSERT INTO inventariocontagem/.test(sql)) {
       const cols = sql.match(/\(([^)]+)\)/)[1].split(',').map(s => s.trim());
@@ -144,4 +154,28 @@ test('sincronizarContagem: não cadastrado no ERP fica de fora e não entra na c
   const r = await criarDlinks(pool, {}).sincronizarContagem({ nIven: 900, nLoja: 5 }, cont([['A', 2], ['NC', 5]]));
   assert.strictEqual(r.linhas, 1);
   assert.deepStrictEqual(r.ignorados.map(i => i.codigo), ['NC']);
+});
+
+test('sincronizarContagem: lista da tela (inventarioprodutos) igual ao coletor — cria, soma todos os digitadores e atualiza', async () => {
+  const pool = poolFalso({ contagem: [{ nIven: 900, CodDigitador: 7, CodigoBarra: 'B', End: '0', Qtd: 5 }],
+    produtos: [{ nReg: 50, nLoja: 5, nIven: 900, CodigoBarra: 'B', Qtd: 0, QtdAnt: 9, Status: 0 }] });
+  const dl = criarDlinks(pool, {}), inv = { nIven: 900, nLoja: 5 };
+  let r = await dl.sincronizarContagem(inv, cont([['A', 10], ['B', 3]]));
+  assert.deepStrictEqual([r.produtosCriados, r.produtosAtualizados], [1, 1]);
+  const a = pool.db.produtos.find(x => x.CodigoBarra === 'A');
+  assert.deepStrictEqual([a.nLoja, a.Qtd, a.QtdAnt, a.TotalCusto, a.TotalVenda, a.End, a.Status, a.Descricao, a.Und, a.CustoUnitario], [5, 10, 12, 31, 40, '0', 0, 'PRODUTO A', 'UN', 3.1]);
+  const b = pool.db.produtos.find(x => x.CodigoBarra === 'B');
+  assert.deepStrictEqual([b.Qtd, b.QtdAnt, b.TotalCusto], [8, 9, 20]); // 5 do outro digitador + 3 do Kontar; QtdAnt fica como o Dlinks gravou; sem custoloja usa o cadastro
+  r = await dl.sincronizarContagem(inv, cont([['A', 7], ['B', 3]]));
+  assert.deepStrictEqual([r.produtosCriados, r.produtosAtualizados], [0, 1]);
+  assert.strictEqual(pool.db.produtos.find(x => x.CodigoBarra === 'A').Qtd, 7);
+  r = await dl.sincronizarContagem(inv, cont([['A', 7], ['B', 3]]));
+  assert.deepStrictEqual([r.produtosCriados, r.produtosAtualizados], [0, 0]);
+  assert.strictEqual(pool.db.produtos.length, 2);
+});
+
+test('sincronizarContagem: inventário congelado (Status diferente de 0) não mexe na lista da tela', async () => {
+  const pool = poolFalso({ status: 1 });
+  const r = await criarDlinks(pool, {}).sincronizarContagem({ nIven: 900, nLoja: 5 }, cont([['A', 4]]));
+  assert.strictEqual(r.linhas, 1); assert.strictEqual(pool.db.produtos.length, 0);
 });

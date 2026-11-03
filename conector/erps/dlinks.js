@@ -1,7 +1,8 @@
 'use strict';
-// Adaptador Dlinks (MySQL "central"). Só LÊ itens/estoque/inventário e só INSERE linhas em
-// inventariodigitador + inventariocontagem — tabelas que o próprio Dlinks usa no inventário.
-// Nunca cria tabela/coluna, nunca DROP/TRUNCATE, nunca UPDATE/DELETE.
+// Adaptador Dlinks (MySQL "central"). Só LÊ itens/estoque/inventário; INSERE linhas em
+// inventariodigitador + inventariocontagem e mantém a lista da tela em inventarioprodutos como o coletor do
+// Dlinks faz (INSERT do produto novo; UPDATE só de Qtd/TotalCusto/TotalVenda, só no inventário aberto).
+// Nunca cria tabela/coluna, nunca DROP/TRUNCATE, nunca DELETE.
 //
 // Tabelas do Dlinks usadas:
 //   inventario          nIven, Data, Tipo (GERAL/PARCIAL), Status (2 = fechado), nLoja, Nome,
@@ -11,6 +12,8 @@
 //   inventariodigitador nReg, nLoja, nIven, Nome, Senha, Backup
 //   inventariocontagem  nLoja, nIven, CodigoBarra, Qtd decimal(10,3), CodDigitador, DataHora 'dd/mm/aaaa hh:mm:ss',
 //                       App, Lote, Backup, End, CodGrupo, seq, emissornfe
+//   inventarioprodutos  nLoja, nIven, CodigoBarra, Descricao, Und, Qtd, QtdAnt, TotalCusto, TotalVenda, End, CodGrupo,
+//                       CustoUnitario, Status (0 = aberto) — a lista da tela "Inventário de Estoque"
 
 const NOME_DIGITADOR = 'KONTAR';
 
@@ -141,7 +144,63 @@ function criarDlinks(pool, cfgDl) {
     const est = {};
     // estoquen pode ter mais de uma linha por produto: vale a de maior nReg.
     for (const r of await q('SELECT CodigoBarra, Qtd, CustoMedio FROM estoquen' + loja + ' ORDER BY nReg')) est[String(r.CodigoBarra).trim()] = r;
-    return itens.map(r => itemCatalogo(r, est[String(r.CodigoBarra).trim()])).filter(i => i.codigo);
+    const cl = await custosLoja(loja, itens.map(r => String(r.CodigoBarra || '').trim()).filter(Boolean));
+    return itens.map(r => { const k = String(r.CodigoBarra).trim(); const it = itemCatalogo(r, est[k]); if (cl[k] != null) it.custo = cl[k]; return it; }).filter(i => i.codigo);
+  }
+
+  // Lista da tela "Inventário de Estoque" (inventarioprodutos), do jeito que o coletor do Dlinks faz com o
+  // inventário aberto: uma linha por produto (End '0', Status 0, loja do inventário) com Qtd = soma da contagem
+  // de TODOS os digitadores/coletores, QtdAnt = estoque da loja, custo e venda atuais. Produto que já está na
+  // lista só tem Qtd/TotalCusto/TotalVenda atualizados quando mudam (QtdAnt fica como o Dlinks gravou). Só os produtos que o
+  // KONTAR contou ou mexeu; só com o inventário aberto (Status 0). Roda dentro da transação da contagem.
+  // Custo da loja como o Dlinks usa no inventário: custoloja{loja}.Custo (texto com vírgula, 1 linha por produto).
+  // Conferido: TotalCusto/Qtd dos inventários fechados bate com ele. Sem a tabela/linha, cai no custo médio/cadastro.
+  async function custosLoja(nLoja, cods, conn) {
+    const out = {};
+    try {
+      for (let i = 0; i < cods.length; i += 1000) {
+        const [r] = await (conn || pool).query('SELECT CodigoBarra, Custo FROM custoloja' + lojaValida(nLoja) + ' WHERE CodigoBarra IN (?) ORDER BY nReg', [cods.slice(i, i + 1000)]);
+        r.forEach(x => { const v = num(x.Custo); if (v != null && v > 0) out[String(x.CodigoBarra).trim()] = v; });
+      }
+    } catch (e) { /* loja sem custoloja{n} */ }
+    return out;
+  }
+
+  async function atualizarProdutos(c, nIven, nLoja, cods) {
+    if (!cods.length) return { criados: 0, atualizados: 0 };
+    const colVenda = (await q('SHOW COLUMNS FROM itens')).some(x => x.Field === 'P' + nLoja) ? 'P' + nLoja : null;
+    const tot = {}, lista = {}, item = {}, est = {};
+    for (let i = 0; i < cods.length; i += 1000) {
+      const parte = cods.slice(i, i + 1000);
+      const [t] = await c.query('SELECT CodigoBarra, SUM(Qtd) q FROM inventariocontagem WHERE nIven = ? AND CodigoBarra IN (?) GROUP BY CodigoBarra', [nIven, parte]);
+      t.forEach(r => { tot[String(r.CodigoBarra).trim()] = r3(num(r.q) || 0); });
+      const [p] = await c.query('SELECT nReg, CodigoBarra, Qtd, TotalCusto, TotalVenda FROM inventarioprodutos WHERE nIven = ? AND CodigoBarra IN (?) ORDER BY nReg', [nIven, parte]);
+      p.forEach(r => { const k = String(r.CodigoBarra).trim(); if (!lista[k]) lista[k] = r; });
+      const [it] = await c.query('SELECT CodigoBarra, Descricao, Unid, custo, CodGrupo' + (colVenda ? ', ' + colVenda + ' venda' : '') + ' FROM itens WHERE CodigoBarra IN (?)', [parte]);
+      it.forEach(r => { item[String(r.CodigoBarra).trim()] = r; });
+      const [e] = await c.query('SELECT CodigoBarra, Qtd, CustoMedio FROM estoquen' + nLoja + ' WHERE CodigoBarra IN (?) ORDER BY nReg', [parte]);
+      e.forEach(r => { est[String(r.CodigoBarra).trim()] = r; }); // vale a de maior nReg
+    }
+    const custoLoja = await custosLoja(nLoja, cods, c);
+    let criados = 0, atualizados = 0;
+    for (const cod of cods) {
+      const it = item[cod]; if (!it) continue;
+      const qtd = tot[cod] || 0, e = est[cod];
+      const cm = e ? num(e.CustoMedio) : null;
+      const custo = custoLoja[cod] != null ? custoLoja[cod] : ((cm != null && cm > 0) ? cm : (num(it.custo) || 0)), venda = num(it.venda) || 0;
+      const totCusto = Math.round(qtd * custo * 100) / 100, totVenda = r3(qtd * venda);
+      const ja = lista[cod];
+      if (ja) {
+        if (r3(num(ja.Qtd) || 0) === qtd && Math.round((num(ja.TotalCusto) || 0) * 100) === Math.round(totCusto * 100) && r3(num(ja.TotalVenda) || 0) === totVenda) continue;
+        await c.query('UPDATE inventarioprodutos SET Qtd = ?, TotalCusto = ?, TotalVenda = ? WHERE nReg = ? AND nIven = ? AND Status = 0', [qtd, totCusto, totVenda, ja.nReg, nIven]);
+        atualizados++;
+      } else if (qtd !== 0) {
+        await c.query('INSERT INTO inventarioprodutos (nLoja, nIven, CodigoBarra, Descricao, Und, Qtd, QtdAnt, TotalCusto, TotalVenda, emitido_em_nota, Lote, Backup, End, CodGrupo, CustoUnitario, Status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, ?, 0)',
+          [nLoja, nIven, cod, String(it.Descricao || '').trim().slice(0, 45), String(it.Unid || '').trim().slice(0, 45), qtd, r3(e ? (num(e.Qtd) || 0) : 0), totCusto, totVenda, '0', Number(it.CodGrupo) || 0, custo]);
+        criados++;
+      }
+    }
+    return { criados, atualizados };
   }
 
   // Deixa o digitador KONTAR do inventário igual à contagem atual do Kontar. Só INSERE: compara, por produto e
@@ -201,10 +260,13 @@ function criarDlinks(pool, cfgDl) {
         const errados = [...chaves].filter(k => r3((deveria[k] || 0) - (depois[k] || 0)) !== 0);
         if (errados.length) throw new Error('Conferência no Dlinks não bateu em ' + errados.length + ' produto(s) (ex.: ' + errados[0].replace('\u0001', ' end ') + '); nada gravado');
       }
+      const tocados = [...new Set(Object.keys(deveria).concat(Object.keys(jaTem)).map(k => k.split('\u0001')[0]))];
+      const prod = (opts.atualizarProdutos === false || Number(atual.Status) !== 0) ? { criados: 0, atualizados: 0 }
+        : await atualizarProdutos(c, nIven, nLoja, tocados);
       await c.commit();
       const pos = linhas.filter(l => l.Qtd > 0).length;
       return { linhas: linhas.length, positivas: pos, negativas: linhas.length - pos, ignorados, codDigitador: codDig,
-        produtos: new Set(Object.keys(deveria).map(k => k.split('\u0001')[0])).size };
+        produtos: new Set(Object.keys(deveria).map(k => k.split('\u0001')[0])).size, produtosCriados: prod.criados, produtosAtualizados: prod.atualizados };
     } catch (e) { try { await c.rollback(); } catch (_) {} throw e; } finally { c.release(); }
   }
 

@@ -3,7 +3,7 @@
 # Precisa: Inno Setup 6 (ISCC.exe) e um node.exe Windows x64 (Node 22 LTS) pra embutir.
 param(
   [Parameter(Mandatory = $true)][string]$NodeExe,
-  [string]$Versao = '1.2.0',
+  [string]$Versao = '1.3.0',
   [string]$Saida = (Join-Path $env:TEMP 'kontar-conector-build\saida'),
   [switch]$Teste   # versão de teste: instala na pasta do usuário, sem Administrador e sem tarefa do Windows
 )

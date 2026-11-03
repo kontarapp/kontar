@@ -34,10 +34,11 @@ Opcionais: `/PORTA=3306 /BANCO=central /DESDE=781 /ENDERECOS=1-10`.
 
 ## O que o conector faz no banco do ERP
 
-- **Lê**: `inventario`, `itens`, `estoquen{loja}`.
+- **Lê**: `inventario`, `itens`, `estoquen{loja}`, `custoloja{loja}`.
 - **Insere** (nunca altera nem apaga): uma linha em `inventariodigitador` com o nome `KONTAR` por inventário e as linhas de contagem em `inventariocontagem` (código, quantidade com 3 casas, endereço, data e hora).
 - A cada envio grava **só a diferença** entre o que o `KONTAR` já tem no inventário e a contagem atual do Kontar: positiva quando bipam mais, negativa quando excluem, zeram ou corrigem (o Dlinks soma as linhas, igual a um "-3" lançado na tela). Depois de gravar, confere na mesma transação que a soma bate com o Kontar; se não bater, desfaz e avisa no Kontar.
 - Não cria tabela nem coluna. Se o inventário já estiver fechado no ERP, não grava e avisa no Kontar.
+- **Lista da tela "Inventário de Estoque"** (`inventarioprodutos`): igual ao coletor do Dlinks, a cada envio o produto contado entra na lista (uma linha por produto, loja do inventário, Status 0) com a quantidade somada de **todos** os digitadores/coletores, o estoque da loja como quantidade anterior, o custo da loja (`custoloja{loja}`) e o preço de venda da loja. Se o produto já está na lista, só a quantidade e os totais de custo/venda são atualizados (UPDATE só nesses campos, só com o inventário aberto). Nunca apaga linha.
 - Gravar de novo sem mudança não grava nada (não duplica). Se o inventário for fechado no ERP antes do fim, o conector para de gravar e avisa no Kontar.
 
 Usuário do MySQL recomendado: só leitura, com `INSERT` apenas em `inventariodigitador` e `inventariocontagem`.
