@@ -1,4 +1,4 @@
-# Gera o KontarConectorSetup.exe (Inno Setup 6) e o kontar-conector.zip.
+﻿# Gera o KontarConectorSetup.exe (Inno Setup 6) e o kontar-conector.zip.
 #   powershell -ExecutionPolicy Bypass -File conector\instalador\build.ps1 -NodeExe C:\caminho\node.exe [-Versao 1.1.0] [-Saida pasta]
 # Precisa: Inno Setup 6 (ISCC.exe) e um node.exe Windows x64 (Node 22 LTS) pra embutir.
 param(
@@ -36,4 +36,6 @@ $zip = Join-Path $Saida 'kontar-conector.zip'
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Copy-Item (Join-Path $conector 'instalar.ps1'), (Join-Path $conector 'desinstalar.ps1') $app -Force
 Compress-Archive -Path "$app\*" -DestinationPath $zip
+# Cópia com a versão no nome (o KontarConectorSetup.exe sem versão segue sendo o link fixo do botão do Kontar)
+Copy-Item (Join-Path $Saida 'KontarConectorSetup.exe') (Join-Path $Saida "KontarConectorSetup-$Versao.exe") -Force
 Get-ChildItem $Saida | ForEach-Object { '{0}  {1:N0} KB' -f $_.Name, ($_.Length / 1KB) }
