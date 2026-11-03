@@ -3,7 +3,7 @@
 // Código plain JS (sem bundler), Firebase compat SDK.
 
 // Verificação de versão — roda antes de tudo
-var BUILD = '26';
+var BUILD = '27';
 (function() {
   var vEl = document.getElementById('sb-versao');
   if (vEl) vEl.textContent = 'v' + BUILD;
@@ -1017,7 +1017,17 @@ function renderUsers() {
   _cnt('u-col',function(u){return u.perfil==='coletor';});
   _cnt('u-outros',function(u){return ['admin','supervisor','coletor'].indexOf(u.perfil)<0;});
 }
+// Versão do conector = última release publicada no GitHub (o botão baixa sempre a "latest")
+function _mostrarVersaoConector() {
+  var el = document.getElementById('conector-versao'); if (!el || el.dataset.ok) return;
+  fetch('https://api.github.com/repos/kontarapp/kontar/releases/latest').then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
+    var m = j && String(j.tag_name || '').match(/(\d+\.\d+\.\d+)/); if (!m) return;
+    var d = j.published_at ? new Date(j.published_at).toLocaleDateString('pt-BR') : '';
+    el.textContent = 'versão ' + m[1] + (d ? ' · ' + d : ''); el.dataset.ok = '1';
+  }).catch(function(){});
+}
 function renderIntegracoes() {
+  _mostrarVersaoConector();
   var cid = S.currentUser && S.currentUser.clienteId; if (!cid) return;
   var info = document.getElementById('integ-token-info'), tb = document.getElementById('integ-log');
   db.collection('clientes').doc(cid).get().then(function(d){
